@@ -15,6 +15,11 @@
  * there will be a sample (camera?) object that turns data to lines via a plot method
  * there will be a viz object that manages the  
  * 
+ * 
+ * next task - make a detector GUI object that will handle changing parameters
+ * so... maybe a box that spawns detectors based on camera / spectrometer choice?
+ * a detector factory, where there's one pulldown for camera and one for spectrometer
+ * 
  */
 
  console.log('spectroSim.js - Adam Wise 10/2020')
@@ -23,12 +28,13 @@
 
  var app = {
      'debug' : 1, // 
-     'nSamples' : 8, // how many traces to draw per detector
-     'graphWidthmm' : 0.5, // width of plot area in mm
+     'nSamples' : 1, // how many traces to draw per detector
+     'graphWidthmm' : 1, // width of plot area in mm
      'svgWidth' : 700,
      'svgHeight' : 400,
      'graphYMin' : -20,
-     'graphYMax' : 380,
+     'graphYMax' : 5000,
+     'scaleTraces' : 1,
  }
 
  // ========================================= General Purpose Function ===================================
@@ -59,6 +65,10 @@ function randBM() {
 function poissonSample( lambda = 1){
     var output = 0
 
+    if (lambda > 30){
+        return Math.sqrt(lambda) * randBM() + lambda
+    }
+
     // if lambda = 0, return array of zeros
     if (lambda <= 0 || isNaN(lambda)){
         return output;
@@ -85,22 +95,22 @@ function poissonSample( lambda = 1){
          this.height = height;
      }
 
-     createSpectrumDataObject(configObj) {
+     createSpectrumDataObject(camConfigObj, spectrometerConfigObj) {
          if (app.debug){console.log('createSpectrumDataObject called')};
          var dataArray = [];
-         dataArray.length = configObj['xPixels'];
-         var pixelSize = configObj['xPixelSize'];
+         dataArray.length = camConfigObj['xPixels'];
+         var pixelSize = camConfigObj['xPixelSize'];
          dataArray.fill(0);
          // add the contribution from each peak
          for (var k in this.peakList){
-             if (app.debug){console.log('adding ',k, this.peakList[k], configObj)}
+             if (app.debug){console.log('adding ',k, this.peakList[k], camConfigObj)}
              for (var i =0; i < dataArray.length; i++){
                 // calculate the integral for each pixel.  E.g. for pixel one, it'll be 0:pixelwidth, then for pixel 2 it'll be pixelwidth : 2*pixelwidth and so on
                 // the integral will be erf(a)-erf(b).  estabilish a cutoff at which you won't want to calc erf?
                 // so...
                 var a0 = this.peakList[k]['a']; // scale value by height of peak
                 var mu = this.peakList[k]['mu'];
-                var sig = this.peakList[k]['sigma'];
+                var sig = Math.sqrt(this.peakList[k]['sigma']**2 + (spectrometerConfigObj['psf']/1000)**2);
                 var x0 = ( (i+0) * pixelSize / 1000) - mu;
                 var x1 = ( (i+1) * pixelSize / 1000) - mu;
                 dataArray[i] += a0 * ( erf(x1/sig) - erf(x0/sig) );
@@ -113,9 +123,10 @@ function poissonSample( lambda = 1){
  }
 
  class Detector {
-     constructor(configObj, data){
-        this.configObj = configObj;
-        this.spectrum = data;
+     constructor(camConfigObj, spectrometerConfigObj, spectrumGenerator){
+        this.camConfigObj = camConfigObj;
+        this.spectrometerConfigObj = spectrometerConfigObj;
+        this.spectrum = spectrumGenerator.createSpectrumDataObject(camConfigObj, spectrometerConfigObj);
         this.paths = [];
         this.svg = d3.select('svg')
         this.g = this.svg.append('g')
@@ -127,23 +138,38 @@ function poissonSample( lambda = 1){
          if (app.debug == 1){
             console.log('drawing')
          }
-         var xShift = -1 * this.configObj.xPixelSize/1000
+         var xShift = 0;//-1 * this.configObj.xPixelSize/1000
          var scaleX = d3.scaleLinear().domain([xShift, app['graphWidthmm'] + xShift]).range([0,app.svgWidth])
-         var scaleY = d3.scaleLinear().domain( [app['graphYMin'], app['graphYMax'] ]).range([app['svgHeight'], 0]);
-         this.line.x( (d,i)=>scaleX(i * this.configObj['xPixelSize'] / 1000) );
+         
+         var yScaleFactor = 1;
+         if (app['scaleTraces']) {yScaleFactor = 25/this.camConfigObj.xPixelSize}; 
+         
+         var scaleY = d3.scaleLinear().domain( [app['graphYMin'] / yScaleFactor, app['graphYMax'] / yScaleFactor ]).range([app['svgHeight'], 0]);
+         this.line.x( (d,i)=>scaleX(i * this.camConfigObj['xPixelSize'] / 1000) );
          this.line.y(d=>scaleY(d))
         
 
          // draw random samples based on ground truth
          for (var q = 0; q < app['nSamples']; q++){
+
+            measuredData = this.spectrum.data;
+
+            if (!this.camConfigObj['ideal']){
+                measuredData = this.spectrum.data.map(poissonSample)
+            }
+
+            var measuredData = measuredData.map(d=>d + (this.camConfigObj.readNoise * randBM()) )
             //var measuredData = this.spectrum.data;
-            var measuredData = this.spectrum.data.map(poissonSample)
-            var measuredData = measuredData.map(d=>d + (this.configObj.readNoise * randBM()) )
             var newPath = this.svg.append('path')
+            this.paths.push(newPath);
             newPath.style('stroke-opacity', 2 * 1/app['nSamples'])
             newPath.attr('d', this.line(measuredData))
             newPath.style('stroke', this.graphColor)
          }
+     }
+
+     erase(){
+         this.paths.forEach(f=>f.remove())
      }
  }
 
@@ -152,10 +178,14 @@ function poissonSample( lambda = 1){
  var spectra = 0
  var data1 = 0;
 
- peakList1 = [{'a' :100, 'mu':0.125, 'sigma':0.000025/2.355},
-                {'a' :320, 'mu':0.25 , 'sigma':0.025},
-                {'a' :360, 'mu':1 , 'sigma':0.1},
-                {'a' :360, 'mu':25 , 'sigma':0.1}]
+ peakList1 = [{'a' :800, 'mu':0.06 , 'sigma':0.0001},
+                {'a' :1920, 'mu':0.2, 'sigma':0.030/2.355},
+                {'a' :1920, 'mu':0.24, 'sigma':0.030/2.355},
+                {'a' :3820, 'mu':0.37, 'sigma':0.070/2.355},
+
+                {'a' :1820, 'mu':0.5, 'sigma':0.0001},
+                {'a' :1820, 'mu':0.75, 'sigma':0.0001},
+            ]
 
  spectrumGen1 = new SpectrumGenerator(peakList = peakList1)
 
@@ -167,21 +197,50 @@ var mainSvg = d3.select('body').append('svg').style('height', app.svgHeight).sty
 
 /// create a new detector configuration and detector
 
-var detectorConfig = cameraDefs['idus420BU'];
-var spec1 = spectrumGen1.createSpectrumDataObject(detectorConfig)
-var detector1 = new Detector(detectorConfig, spec1)
-detector1.graphColor = 'blue'
-
-var detectorConfig2 = cameraDefs['zyla42usb'];
-var spec2 = spectrumGen1.createSpectrumDataObject(detectorConfig2)
-var detector2 = new Detector(detectorConfig2, spec2)
-detector2.graphColor = 'red'
+var idealSpectrometer = spectrometers['Ideal Imaging System'];
 
 
+
+var idealCamConfig = {'readNoise' : 0, 'xPixels' : 1000, 'xPixelSize' : 1, 'ideal' : true,}
+var detector1 = new Detector(idealCamConfig, idealSpectrometer, spectrumGen1)
 
 detector1.draw();
-detector2.draw()
 
 
- 
+// detector factory goes here
+var detectorFactoryDiv = d3.select('#detectorFactory')
+detectorFactoryDiv.text('Detector Factory')
+
+var cameraSelect = detectorFactoryDiv.append('select')
+cameraSelect
+    .selectAll('option')
+    .data(Object.keys(cameraDefs).sort())
+    .enter()
+    .append('option')
+    .attr('value',d=>d)
+    .text(d=>cameraDefs[d]['displayName'])
+
+var spectrometerSelect = detectorFactoryDiv.append('select')
+spectrometerSelect
+    .selectAll('option')
+    .data(Object.keys(spectrometers).sort())
+    .enter()
+    .append('option')
+    .attr('value',d=>d)
+    .text(d=>spectrometers[d]['displayName'])
+
+var createDetectorButton = detectorFactoryDiv.append('button')
+createDetectorButton.text('create new detector')
+
+createDetectorButton.on('click', function(){
+    console.log('pressed')
+    var newCamObj = cameraDefs[cameraSelect.property('value')];
+    var newSpecObj = spectrometers[spectrometerSelect.property('value')];
+    
+    
+    var newDetector = new Detector(newCamObj, newSpecObj, spectrumGen1)
+    newDetector.graphColor = `rgb(${Math.round(Math.random()*255)},${Math.round(Math.random()*255)},${Math.round(Math.random()*255)})`
+    newDetector.draw();
+    if(app.debug){console.log(detector1.graphColor)}
+})
 

@@ -19,6 +19,20 @@
                 stroke : black;
                 fill : none;
                 stroke-opacity: 0.05;
+                stroke-width : 2;
+            }
+
+            #detectorFactory {
+                display : flex;
+                flex-direction : column;
+            }
+
+            select {
+                width : 280px;
+            }
+
+            button {
+                width : 280px;
             }
 
         </style>
@@ -26,16 +40,14 @@
 
     <body>
        
-        <h1>
-        <span style="color:blue">25um pixel</span>
-        <span style="color:red">6.5um pixel</span>
-        </h2>
-        <br>
 
+
+        <div id = "detectorFactory"></div>
 
     </body>
 
     <script src = 'js/d3.min.js'></script>
+    <script src = 'js/spectrometers.js'></script>
     <script src = 'js/cameraDefsJSON.js'></script>
     <script src = 'js/spectroSim.js'></script>
 
