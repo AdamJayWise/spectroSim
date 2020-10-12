@@ -20,9 +20,19 @@
  * so... maybe a box that spawns detectors based on camera / spectrometer choice?
  * a detector factory, where there's one pulldown for camera and one for spectrometer
  * 
+ * I want to re-scale the x axis into wavelength...
+ * 
  */
 
  console.log('spectroSim.js - Adam Wise 10/2020')
+
+ // ========================================= grating object ==================================
+
+ var gratingRules = [150, 300, 600, 900, 1200, 1800, 2400]
+ var gratings = {};
+ gratingRules.forEach(function(r){
+    gratings[String(r) + ' lines / mm'] = {'rule' : r}; 
+ })
 
  // ========================================= app variables ===================================
 
@@ -35,6 +45,7 @@
      'graphYMin' : -20,
      'graphYMax' : 5000,
      'scaleTraces' : 1,
+     'centerWavelength' : 500,
  }
 
  // ========================================= General Purpose Function ===================================
@@ -100,6 +111,7 @@ function poissonSample( lambda = 1){
          var dataArray = [];
          dataArray.length = camConfigObj['xPixels'];
          var pixelSize = camConfigObj['xPixelSize'];
+         var relDispersion = (spectrometerConfigObj['fl'] / 163) * (spectrometerConfigObj['gratingRule'] / 150)
          dataArray.fill(0);
          // add the contribution from each peak
          for (var k in this.peakList){
@@ -109,7 +121,7 @@ function poissonSample( lambda = 1){
                 // the integral will be erf(a)-erf(b).  estabilish a cutoff at which you won't want to calc erf?
                 // so...
                 var a0 = this.peakList[k]['a']; // scale value by height of peak
-                var mu = this.peakList[k]['mu'];
+                var mu = this.peakList[k]['mu'] * relDispersion;
                 var sig = Math.sqrt(this.peakList[k]['sigma']**2 + (spectrometerConfigObj['psf']/1000)**2);
                 var x0 = ( (i+0) * pixelSize / 1000) - mu;
                 var x1 = ( (i+1) * pixelSize / 1000) - mu;
@@ -132,6 +144,8 @@ function poissonSample( lambda = 1){
         this.g = this.svg.append('g')
         this.line = d3.line().x(function(d,i){return i/10}).y(function(d){return d})
 
+        
+
      }
 
      draw(){
@@ -139,7 +153,8 @@ function poissonSample( lambda = 1){
             console.log('drawing')
          }
          var xShift = 0;//-1 * this.configObj.xPixelSize/1000
-         var scaleX = d3.scaleLinear().domain([xShift, app['graphWidthmm'] + xShift]).range([0,app.svgWidth])
+         var relDispersion = (this.spectrometerConfigObj['fl'] / 163) * (this.spectrometerConfigObj['gratingRule'] / 150)
+         var scaleX = d3.scaleLinear().domain([ (xShift), (app['graphWidthmm'] + xShift) * relDispersion ]).range([0,app.svgWidth])
          
          var yScaleFactor = 1;
          if (app['scaleTraces']) {yScaleFactor = 25/this.camConfigObj.xPixelSize}; 
@@ -200,11 +215,10 @@ var mainSvg = d3.select('body').append('svg').style('height', app.svgHeight).sty
 var idealSpectrometer = spectrometers['Ideal Imaging System'];
 
 
-
-var idealCamConfig = {'readNoise' : 0, 'xPixels' : 1000, 'xPixelSize' : 1, 'ideal' : true,}
+var idealCamConfig = {'readNoise' : 0, 'xPixels' : 2000, 'xPixelSize' : 1, 'ideal' : true,}
 var detector1 = new Detector(idealCamConfig, idealSpectrometer, spectrumGen1)
 
-detector1.draw();
+//detector1.draw();
 
 
 // detector factory goes here
@@ -229,6 +243,15 @@ spectrometerSelect
     .attr('value',d=>d)
     .text(d=>spectrometers[d]['displayName'])
 
+var gratingSelect = detectorFactoryDiv.append('select')
+gratingSelect
+    .selectAll('option')
+    .data(Object.keys(gratings))
+    .enter()
+    .append('option')
+    .attr('value',d=>d)
+    .text(d=>d)
+
 var createDetectorButton = detectorFactoryDiv.append('button')
 createDetectorButton.text('create new detector')
 
@@ -236,11 +259,22 @@ createDetectorButton.on('click', function(){
     console.log('pressed')
     var newCamObj = cameraDefs[cameraSelect.property('value')];
     var newSpecObj = spectrometers[spectrometerSelect.property('value')];
+    newSpecObj['gratingRule'] = gratings[gratingSelect.property('value')]['rule']
     
+    console.log(newSpecObj)
     
     var newDetector = new Detector(newCamObj, newSpecObj, spectrumGen1)
-    newDetector.graphColor = `rgb(${Math.round(Math.random()*255)},${Math.round(Math.random()*255)},${Math.round(Math.random()*255)})`
+    newDetector.graphColor = `hsl(${Math.round(Math.random()*360)},100%,50%)`
     newDetector.draw();
-    if(app.debug){console.log(detector1.graphColor)}
+    if(app.debug){console.log(detector1.graphColor)};
+
+    d3.select('body')
+        .append('div')
+        .text(newCamObj['displayName'] + ' - ' + newSpecObj['displayName'] + ' - ' + newSpecObj['gratingRule'] + ' lines / mm')
+        .style('color', newDetector.graphColor)
+        .on('click', function(){
+            newDetector.erase();
+            this.remove()
+        })
 })
 

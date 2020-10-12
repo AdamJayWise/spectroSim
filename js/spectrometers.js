@@ -1,15 +1,15 @@
 var spectrometers = { 
 
-  'Ideal Imaging System' : {//'psf' : 60, // original psf from Tristan's script, in um
-  'psf' : 0, // point spread function after removal of 10um slit 
-  'dev' : -13.9, // deviation in degrees
-  'fpt' : 4, // focal plane tilt, in degrees
-  'fl' : 163, // focal length, in mm
-  'gratingSizeX' : '45',
-  'gratingSizeY' : '45',
-  'f#' : 1,
-  'displayName' : 'Ideal Imaging System', // what to call it in the GUI,
-}
+  'Ideal Imaging System' : {
+                'psf' : 0, // point spread function after removal of 10um slit 
+                'dev' : -13.9, // deviation in degrees
+                'fpt' : 4, // focal plane tilt, in degrees
+                'fl' : 328, // focal length, in mm
+                'gratingSizeX' : '45',
+                'gratingSizeY' : '45',
+                'f#' : 1,
+                'displayName' : 'Ideal Imaging System (328mm)', // what to call it in the GUI,
+  }
 ,
 
   'Shamrock 163' : {//'psf' : 60, // original psf from Tristan's script, in um
