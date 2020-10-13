@@ -242,7 +242,7 @@ var mainSvg = d3.select('body').append('svg').style('height', app.svgHeight).sty
 app.svg = mainSvg;
 
 // create a clippath to establish drawing area of svg
-var clipPath = app.svg.append('clippath')
+var clipPath = app.svg.append('clipPath')
 clipPath.attr('id','clipPath')
 clipPath.append('rect')
     .attr('x', app.graphMarginX + 'px')
