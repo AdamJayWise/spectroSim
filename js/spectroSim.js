@@ -128,7 +128,7 @@ function poissonSample( lambda = 1){
                 // so...
                 var a0 = this.peakList[k]['a']; // scale value by height of peak
                 var mu = this.peakList[k]['mu'] * relDispersion;
-                var sig = Math.sqrt(this.peakList[k]['sigma']**2 + (spectrometerConfigObj['psf']/1000)**2);
+                var sig = Math.sqrt(this.peakList[k]['sigma']**2 + (spectrometerConfigObj['psf']/(2.355*1000))**2);
                 var x0 = ( (i+0) * pixelSize / 1000) - mu;
                 var x1 = ( (i+1) * pixelSize / 1000) - mu;
                 dataArray[i] += a0 * ( erf(x1/sig) - erf(x0/sig) );
@@ -164,7 +164,7 @@ function poissonSample( lambda = 1){
          }
          var xShift = 0;//-1 * this.camera.xPixelSize/1000
          var relDispersion = (this.spectrometerConfigObj['fl'] / 163) * (this.gratingConfigObj['rule'] / 150)
-         var scaleX = d3.scaleLinear().domain([ (app.graphMinXmm + xShift), (app.graphMaxXmm + xShift) * relDispersion ]).range([0 + app.graphMarginX , app.svgWidth - app.graphMarginX])
+         var scaleX = d3.scaleLinear().domain([ (app.graphMinXmm) * relDispersion, (app.graphMaxXmm) * relDispersion ]).range([0 + app.graphMarginX , app.svgWidth - app.graphMarginX])
          
          var yScaleFactor = 1;
          if (app['scaleTraces']) {yScaleFactor = 25/this.camConfigObj.xPixelSize}; 
