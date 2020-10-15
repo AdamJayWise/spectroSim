@@ -23,6 +23,14 @@
  * I want to re-scale the x axis into wavelength...
  * lets start by creating adjustable x bounds
  * 
+ * ok so how to make this reasonable... 
+ * first, need to get better estimates of dispersion
+ * need to add a center wavelength input
+ * need to copy over code for calculating spectrometer stuff
+ * 
+ * ok right now the program is calculating the spectra in terms of detector position in mm
+ * how can I recast to use wavelength?  Or do I even want to? (I do)
+ * 
  */
 
  console.log('spectroSim.js - Adam Wise 10/2020')
@@ -42,6 +50,8 @@
      'nSamples' : 1, // how many traces to draw per detector
      'graphMinXmm' : 0, // minimum x value of plot field of view (focal plane) in mm,
      'graphMaxXmm' : 5, // minimum x value of plot field of view (focal plane) in mm,
+     'graphMinXnm' : 300, // minimum x value of plot field of view (focal plane) in mm,
+     'graphMaxXnm' : 700, // minimum x value of plot field of view (focal plane) in mm,
      'svgWidth' : 700,
      'svgHeight' : 280,
      'graphYMin' : -20,
@@ -51,10 +61,30 @@
      'svg' : d3.select('svg'),
      'graphMarginX' : 30,
      'graphMarginY' : 20,
-     'targetDispersion' : 10, // disperions for x axis in nm/mm.  sets scale of x axis
+     'targetDispersion' : 20, // disperions for x axis in nm/mm.  sets scale of x axis
  }
 
  // ========================================= General Purpose Functions ===================================
+
+ function calculateTilt(obj){
+    sinTilt = 10**-6 * obj.centerWavelength * obj.grooveDensity / (-2 * Math.cos( (2 * Math.PI) * obj.deviationAngle / 360  ))
+    return 360 * Math.asin(sinTilt) / (2 * Math.PI)
+}
+
+function deg(angleInRadians){
+    return 360 * angleInRadians / ( 2 * Math.PI )
+}
+
+function rad(angleInDegrees){
+    return 2 * Math.PI * angleInDegrees / ( 360 )
+}
+
+
+function calcPixFactor(pixwidth){
+    if (pixwidth<14) return 1
+    if ( (pixwidth>=14) & (pixwidth<=50) ) return 0.4338*(pixwidth**0.3253);
+    if (pixwidth>50) return 1.55
+}
 
  // gaussian function
  function g(x, mu = 0, sig = 1){
@@ -112,12 +142,13 @@ function poissonSample( lambda = 1){
          this.height = height;
      }
 
-     createSpectrumDataObject(camConfigObj, spectrometerConfigObj, gratingConfigObj) {
+     createSpectrumDataObject(camConfigObj, spectrometerConfigObj, gratingConfigObj, opticalInfoObj = {}) {
          if (app.debug){console.log('createSpectrumDataObject called')};
          var dataArray = [];
          dataArray.length = camConfigObj['xPixels'];
          var pixelSize = camConfigObj['xPixelSize'];
-         var relDispersion = (spectrometerConfigObj['fl'] / 163) * (gratingConfigObj['rule'] / 150)
+         var dispersion = opticalInfoObj.linearDispersion;
+         var sensorWidthmm = camConfigObj.xPixelSize * camConfigObj.xPixels / 1000;
          dataArray.fill(0);
          // add the contribution from each peak
          for (var k in this.peakList){
@@ -127,8 +158,8 @@ function poissonSample( lambda = 1){
                 // the integral will be erf(a)-erf(b).  estabilish a cutoff at which you won't want to calc erf?
                 // so...
                 var a0 = this.peakList[k]['a']; // scale value by height of peak
-                var mu = this.peakList[k]['mu'] * relDispersion;
-                var sig = Math.sqrt(this.peakList[k]['sigma']**2 + (spectrometerConfigObj['psf']/(2.355*1000))**2);
+                var mu = (this.peakList[k]['mu'] - app.centerWavelength)/dispersion + sensorWidthmm/2; // mu in mm
+                var sig = Math.sqrt( this.peakList[k]['sigma']**2 + (spectrometerConfigObj['psf']/(2.355*1000))**2);
                 var x0 = ( (i+0) * pixelSize / 1000) - mu;
                 var x1 = ( (i+1) * pixelSize / 1000) - mu;
                 dataArray[i] += a0 * ( erf(x1/sig) - erf(x0/sig) );
@@ -145,12 +176,21 @@ function poissonSample( lambda = 1){
         this.camConfigObj = camConfigObj;
         this.spectrometerConfigObj = spectrometerConfigObj;
         this.gratingConfigObj = gratingConfigObj;
-        this.spectrum = spectrumGenerator.createSpectrumDataObject(camConfigObj, spectrometerConfigObj, gratingConfigObj);
         this.paths = [];
         this.svg = app.svg;
         this.g = this.svg.append('g')
         this.line = d3.line().x(function(d,i){return i/10}).y(function(d){return d})
+        this.spectrumGenerator = spectrumGenerator;
+        this.opticalInfoObj = {}
      }
+
+     updateParams(){
+        this.tiltAngle = calculateTilt({'grooveDensity' : this.gratingConfigObj.rule , 'deviationAngle' : this.spectrometerConfigObj.dev, 'centerWavelength' : app.centerWavelength})
+        this.opticalInfoObj = calcWavelengthRange(app.centerWavelength, this.gratingConfigObj.rule, this.spectrometerConfigObj.dev, this.spectrometerConfigObj.fl, this.tiltAngle, this.spectrometerConfigObj.fpt, this.camConfigObj.xPixels, this.camConfigObj.xPixelSize )
+        console.log('000', this.opticalInfoObj)
+        this.spectrum = this.spectrumGenerator.createSpectrumDataObject(this.camConfigObj, this.spectrometerConfigObj, this.gratingConfigObj, this.opticalInfoObj);
+
+    }
 
      draw(){
 
@@ -163,14 +203,19 @@ function poissonSample( lambda = 1){
             console.log('drawing')
          }
          var xShift = 0;//-1 * this.camera.xPixelSize/1000
-         var relDispersion = (this.spectrometerConfigObj['fl'] / 163) * (this.gratingConfigObj['rule'] / 150)
-         var scaleX = d3.scaleLinear().domain([ (app.graphMinXmm) * relDispersion, (app.graphMaxXmm) * relDispersion ]).range([0 + app.graphMarginX , app.svgWidth - app.graphMarginX])
+         var dispersion = this.opticalInfoObj.linearDispersion;
+         var scaleX = d3.scaleLinear().domain([app.graphMinXnm, app.graphMaxXnm]).range([0 + app.graphMarginX , app.svgWidth - app.graphMarginX])
          
          var yScaleFactor = 1;
          if (app['scaleTraces']) {yScaleFactor = 25/this.camConfigObj.xPixelSize}; 
          
          var scaleY = d3.scaleLinear().domain( [app['graphYMin'] / yScaleFactor, app['graphYMax'] / yScaleFactor ]).range([app['svgHeight'] - app.graphMarginY, 0 + app.graphMarginY]);
-         this.line.x( (d,i)=>scaleX(i * this.camConfigObj['xPixelSize'] / 1000) );
+         
+         // scaleX is nm->pixels, the function inside is in mm-nm
+         // for pixel -> nm, first go pixel->mm, pixel at 1/2 width should give center wavelength, yikes
+         var sensorHalfWidthPx = this.camConfigObj.xPixels/2
+         this.line.x( (d,i)=>scaleX( app.centerWavelength + (i-sensorHalfWidthPx)*this.camConfigObj.xPixelSize/1000 * dispersion));
+         
          this.line.y(d=>scaleY(d))
         
 
@@ -210,30 +255,70 @@ class DetectorGroup {
 
     update(){
         this.detectors.forEach(function(d){
+            d.updateParams();
             d.erase();
             d.draw();
         })
     }
 }
 
- // ====================================================================================
+ // ======================= Grating Equation Code ======================================
+
+ function calcWavelengthRange(cwl, rule, dev, fl, tilt, fpt, xPixels, xPixelSize){
+     console.log(cwl, rule, dev, fl, tilt, fpt, xPixels, xPixelSize)
+    // first calculate the sensor size in mm, from pixel size in microns
+    var sensorSize = xPixels * xPixelSize / 1000;
+    // calculate the angle of the incident and diffracted rays relative to the grating normal
+    var thetaInc = dev - tilt;
+    var thetaRefr = dev + tilt;
+    var tiltFactor = Math.cos(rad(fpt));
+    // calculate the difference in angle of the rays hitting the edge of the camera chip relative to the center wavelength
+    var thetaDiff = Math.atan( sensorSize/2 / fl); // for whatever reason the original andor #s don't inlcude fpt here
+    var startWavelength  = 10**6 * (1/rule) * ( Math.sin(rad(thetaInc)) - Math.sin(rad(thetaRefr) + thetaDiff) ) ;
+    
+
+    // calculate the startWavelength + 1 pixel
+    var thetaDiffPlusOne = Math.atan( (sensorSize/2 - xPixelSize/1000) / fl);
+    var startWavelengthPlusOne = 10**6 * (1/rule) * ( Math.sin(rad(thetaInc)) - Math.sin(rad(thetaRefr) + thetaDiffPlusOne) ) ;
+    
+    if (app.debug){ console.log( (startWavelength-startWavelengthPlusOne) / (xPixelSize/1000) ) }
+
+    var endWavelength = 10**6 * (1/rule) * ( Math.sin(rad(thetaInc)) - Math.sin(rad(thetaRefr) - thetaDiff) ) ;
+    
+    // calculate the startWavelength + 1 pixel
+    var thetaDiffPlusOne = Math.atan( (sensorSize/2 - xPixelSize/1000) / fl);
+    var endWavelengthMinusOne = 10**6 * (1/rule) * ( Math.sin(rad(thetaInc)) - Math.sin(rad(thetaRefr) - thetaDiffPlusOne) ) ;
+    
+    if (app.debug){ console.log('bandwidth?', (endWavelength - endWavelengthMinusOne) / (xPixelSize/1000) ) }
+    
+    var bandWidth = (endWavelength - startWavelength) * tiltFactor ;
+    
+    var linearDispersion = bandWidth / sensorSize;
+    
+    return {'startWavelength' : startWavelength,
+            'endWavelength' : endWavelength,
+            'bandWidth' : bandWidth,
+            'linearDispersion' : linearDispersion,
+            };
+ }
+
+ // ============================ Generate Spectrum ========================================================
 
  var spectra = 0
  var data1 = 0;
 
- peakList1 = [{'a' :800, 'mu':26/1000 * 5 , 'sigma':0.0001},
-                {'a' :1920, 'mu':0.2, 'sigma':0.030/2.355},
-                {'a' :1920, 'mu':0.24, 'sigma':0.030/2.355},
-                {'a' :3820, 'mu':0.37, 'sigma':0.070/2.355},
+ peakList1 = [
 
-                {'a' :1820, 'mu':0.5, 'sigma':0.0001},
-                {'a' :1820, 'mu':0.75, 'sigma':0.0001},
-                {'a' :1820, 'mu':2, 'sigma':0.0001},
-                {'a' :1820, 'mu':3, 'sigma':0.0001},
+                {'a' :1820, 'mu':515, 'sigma':0.00001},
+                {'a' :1820, 'mu':552, 'sigma':0.00001},
+                {'a' :1820, 'mu':550, 'sigma':0.00001},
+                {'a' :1820, 'mu':500, 'sigma':0.00001},
+                {'a' :1820, 'mu':490, 'sigma':0.00001},
             ]
 
  spectrumGen1 = new SpectrumGenerator(peakList = peakList1)
 
+// =======================================================================================
 
 /// now I need to create an SVG canvas and draw the spectrum to it
 
@@ -296,15 +381,28 @@ gratingSelect
 var createDetectorButton = detectorFactoryDiv.append('button')
 createDetectorButton.text('create new detector')
 
+// callback for creating a new detector
 createDetectorButton.on('click', function(){
-    console.log('pressed')
+    
+    if (app.debug) { console.log('Creating New Detector') }
+
     var newCamObj = cameraDefs[cameraSelect.property('value')];
     var newSpecObj = spectrometers[spectrometerSelect.property('value')];
     var newGratingObj = gratings[gratingSelect.property('value')];
+
+    var newDetector = new Detector(newCamObj, newSpecObj, newGratingObj, spectrumGen1);
+    newDetector.updateParams();
     
-    console.log(newSpecObj)
+    console.log('tilt angle is', newDetector.tiltAngle)
+    if (newDetector.tiltAngle < -32 | isNaN(newDetector.tiltAngle)){
+        console.log('grating tilt too large')
+        alert('Grating tilt too large - try a grating with less lines per mm, or a longer focal length spectrometer')
+        return 
+    }
+
+    if (app.debug){ console.log(newSpecObj)}
     
-    var newDetector = new Detector(newCamObj, newSpecObj, newGratingObj, spectrumGen1)
+    
     newDetector.graphColor = `hsl(${Math.round(Math.random()*360)},100%,50%)`
     newDetector.active = 1;// this is a hack for display, fix eventually
     
@@ -329,15 +427,29 @@ createDetectorButton.on('click', function(){
 })
 
 
-// add gui elements for min and max wavelength display
-var minXinput = d3.select('#graphLimsGui')
+// add gui elements for center wavelength display
+var cwlInput = d3.select('#cwlGui')
                     .append('input')
-                    .attr('value', app.graphMinXmm)
+                    .attr('value', app.centerWavelength)
                     .style('width', '40px')
                     .on('input', function(){
                         if (app.debug){console.log(this.value)}
                         if( !isNaN(Number(this.value))){
-                            app.graphMinXmm = Number(this.value);
+                            app.centerWavelength = Number(this.value);
+                            allDetectors.update();
+                        }
+
+                    })
+
+// add gui elements for min and max wavelength display
+var minXinput = d3.select('#graphLimsGui')
+                    .append('input')
+                    .attr('value', app.graphMinXnm)
+                    .style('width', '40px')
+                    .on('input', function(){
+                        if (app.debug){console.log(this.value)}
+                        if( !isNaN(Number(this.value))){
+                            app.graphMinXnm = Number(this.value);
                             allDetectors.update();
                         }
 
@@ -345,12 +457,12 @@ var minXinput = d3.select('#graphLimsGui')
 
 var maxXinput = d3.select('#graphLimsGui')
                     .append('input')
-                    .attr('value', app.graphMaxXmm)
+                    .attr('value', app.graphMaxXnm)
                     .style('width', '40px')
                     .on('input', function(){
                         if (app.debug){console.log(this.value)}
                         if( !isNaN(Number(this.value))){
-                            app.graphMaxXmm = Number(this.value);
+                            app.graphMaxXnm = Number(this.value);
                             allDetectors.update();
                         }
 
@@ -371,4 +483,3 @@ var yAxis = d3.axisLeft(yScale);
 
 xAxis(xAxisG);
 yAxis(yAxisG);
-
