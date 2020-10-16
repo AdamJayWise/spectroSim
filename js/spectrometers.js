@@ -1,5 +1,7 @@
 var spectrometers = { 
 
+  /**
+
   'Ideal Imaging System' : {
                 'psf' : 0, // point spread function after removal of 10um slit 
                 'dev' : -13.9, // deviation in degrees
@@ -11,6 +13,8 @@ var spectrometers = {
                 'displayName' : 'Ideal Imaging System (328mm)', // what to call it in the GUI,
   }
 ,
+
+ */
 
   'Shamrock 163' : {//'psf' : 60, // original psf from Tristan's script, in um
                   'psf' : 59.16, // point spread function after removal of 10um slit 

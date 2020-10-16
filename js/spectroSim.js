@@ -35,6 +35,25 @@
 
  console.log('spectroSim.js - Adam Wise 10/2020')
 
+ // ========================================= filter camera definitions =======================
+
+ var c = {};
+ var cameraKeys = Object.keys(cameraDefs);
+ cameraKeys.forEach(function(k){
+     var include = 1;
+     
+     include = include & !Boolean(cameraDefs[k].hed);  // is camera HED? if so, exclude
+     include = include & ( (cameraDefs[k].xPixelSize * cameraDefs[k].xPixels/1000) < 27 );
+
+     if (include){
+         c[k] = cameraDefs[k];
+     }
+     
+
+ })
+
+ cameraDefs = c;
+
  // ========================================= grating object ==================================
 
  var gratingRules = [150, 300, 600, 900, 1200, 1800, 2400]
@@ -350,12 +369,17 @@ var allDetectors = new DetectorGroup();
 
 // detector factory goes here
 var detectorFactoryDiv = d3.select('#detectorFactory')
-detectorFactoryDiv.text('Detector Factory')
 
 var cameraSelect = detectorFactoryDiv.append('select')
 cameraSelect
     .selectAll('option')
-    .data(Object.keys(cameraDefs).sort())
+    .data(Object.keys(cameraDefs).sort(function(a,b){
+            var al = cameraDefs[a].displayName.toLowerCase();
+            var bl = cameraDefs[b].displayName.toLowerCase();
+            if(al==bl){return 0}
+            if(al>bl){return 1}
+            return -1
+    }))
     .enter()
     .append('option')
     .attr('value',d=>d)
@@ -441,8 +465,8 @@ createDetectorButton.on('click', function(){
 // add gui elements for center wavelength display
 var cwlInput = d3.select('#cwlGui')
                     .append('input')
+                    .classed('textGuiInput', true)
                     .attr('value', app.centerWavelength)
-                    .style('width', '40px')
                     .on('input', function(){
                         if (app.debug){console.log(this.value)}
                         if( !isNaN(Number(this.value))){
@@ -456,7 +480,7 @@ var cwlInput = d3.select('#cwlGui')
 var minXinput = d3.select('#graphLimsGui')
                     .append('input')
                     .attr('value', app.graphMinXnm)
-                    .style('width', '40px')
+                    .classed('textGuiInput', true)
                     .on('input', function(){
                         if (app.debug){console.log(this.value)}
                         if( !isNaN(Number(this.value))){
@@ -469,7 +493,7 @@ var minXinput = d3.select('#graphLimsGui')
 var maxXinput = d3.select('#graphLimsGui')
                     .append('input')
                     .attr('value', app.graphMaxXnm)
-                    .style('width', '40px')
+                    .classed('textGuiInput', true)
                     .on('input', function(){
                         if (app.debug){console.log(this.value)}
                         if( !isNaN(Number(this.value))){
