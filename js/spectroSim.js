@@ -75,7 +75,7 @@
      'svgHeight' : 280,
      'graphYMin' : -20,
      'graphYMax' : 2000,
-     'scaleTraces' : 0, // correct intensity of traces by factor of 1/pixelsize to account for splitting counts
+     'scaleTraces' : 1, // correct intensity of traces by factor of 1/pixelsize to account for splitting counts
      'centerWavelength' : 500,
      'svg' : d3.select('svg'),
      'graphMarginX' : 30,
@@ -233,7 +233,7 @@ function poissonSample( lambda = 1){
          // scaleX is nm->pixels, the function inside is in mm-nm
          // for pixel -> nm, first go pixel->mm, pixel at 1/2 width should give center wavelength, yikes
          var sensorHalfWidthPx = this.camConfigObj.xPixels/2
-         this.line.x( (d,i)=>scaleX( app.centerWavelength + (i-sensorHalfWidthPx)*this.camConfigObj.xPixelSize/1000 * dispersion));
+         this.line.x( (d,i)=>scaleX( app.centerWavelength + (0.5 + i - sensorHalfWidthPx)*this.camConfigObj.xPixelSize/1000 * dispersion));
          
          this.line.y(d=>scaleY(d))
         
@@ -332,7 +332,7 @@ class DetectorGroup {
                 {'a' :1820, 'mu':515, 'sigma':0.00001},
                 {'a' :1820, 'mu':552, 'sigma':0.00001},
                 {'a' :1820, 'mu':550, 'sigma':0.00001},
-                {'a' :1820, 'mu':500, 'sigma':0.00001},
+                {'a' :1820, 'mu':500.5, 'sigma':0.00001},
                 {'a' :1820, 'mu':490, 'sigma':0.00001},
             ]
 
