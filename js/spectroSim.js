@@ -404,7 +404,7 @@ gratingSelect
     .text(d=>d)
 
 var createDetectorButton = detectorFactoryDiv.append('button')
-createDetectorButton.text('create new detector')
+createDetectorButton.text('Create New Detector')
 
 // callback for creating a new detector
 createDetectorButton.on('click', function(){
