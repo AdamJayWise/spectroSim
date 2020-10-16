@@ -55,7 +55,7 @@
      'svgWidth' : 700,
      'svgHeight' : 280,
      'graphYMin' : -20,
-     'graphYMax' : 5000,
+     'graphYMax' : 2000,
      'scaleTraces' : 0, // correct intensity of traces by factor of 1/pixelsize to account for splitting counts
      'centerWavelength' : 500,
      'svg' : d3.select('svg'),
@@ -254,6 +254,7 @@ class DetectorGroup {
     }
 
     update(){
+        updateAxes();
         this.detectors.forEach(function(d){
             d.updateParams();
             d.erase();
@@ -323,7 +324,7 @@ class DetectorGroup {
 /// now I need to create an SVG canvas and draw the spectrum to it
 
 
-var mainSvg = d3.select('body').append('svg').style('height', app.svgHeight).style('width',app.svgWidth)
+var mainSvg = d3.select('#svgContainer').append('svg').style('height', app.svgHeight).style('width',app.svgWidth)
 app.svg = mainSvg;
 
 // create a clippath to establish drawing area of svg
@@ -414,16 +415,26 @@ createDetectorButton.on('click', function(){
     //cameras.forEach(f=>f.draw())
 
 
-    d3.select('body')
-        .append('div')
-        .text(newCamObj['displayName'] + ' - ' + newSpecObj['displayName'] + ' - ' + newGratingObj['rule'] + ' lines / mm')
+    var newLabel = d3.select('#labelContainer').append('div')
+    
+    newLabel
+        .append('span')
+        .classed('detectorLegendItem',true)
+        .html('&emsp;')
         .style('color', newDetector.graphColor)
-        .style('font-size', '22px')
+
+    newLabel
+        .append('span')
+        .text('  ' + newCamObj['displayName'] + ' - ' + newSpecObj['displayName'] + ' - ' + newGratingObj['rule'] + ' lines / mm')
+             
+    newLabel
+        .classed('detectorLabel',true)
         .on('click', function(){
             newDetector.erase();
             newDetector.active = 0;
             this.remove()
         })
+
 })
 
 
@@ -470,7 +481,7 @@ var maxXinput = d3.select('#graphLimsGui')
 
 // add axes
 
-var xScale = d3.scaleLinear().domain([ app.targetDispersion * app.graphMinXmm + app.centerWavelength , app.targetDispersion * app.graphMaxXmm + app.centerWavelength]).range([0 + app.graphMarginX, app.svgWidth - app.graphMarginX]);
+var xScale = d3.scaleLinear().domain([ app.graphMinXnm , app.graphMaxXnm]).range([0 + app.graphMarginX, app.svgWidth - app.graphMarginX]);
 var yScale = d3.scaleLinear().domain([0,100]).range([app.svgHeight - app.graphMarginY, 0 + app.graphMarginY]);
 
 var xAxisG = app.svg.append('g')
@@ -483,3 +494,8 @@ var yAxis = d3.axisLeft(yScale);
 
 xAxis(xAxisG);
 yAxis(yAxisG);
+
+function updateAxes(){
+    xScale.domain([app.graphMinXnm, app.graphMaxXnm])
+    xAxisG.call(xAxis);
+}
