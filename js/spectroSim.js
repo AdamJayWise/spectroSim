@@ -78,7 +78,7 @@
      'scaleTraces' : 1, // correct intensity of traces by factor of 1/pixelsize to account for splitting counts
      'centerWavelength' : 500,
      'svg' : d3.select('svg'),
-     'graphMarginX' : 30,
+     'graphMarginX' : 40,
      'graphMarginY' : 20,
      'targetDispersion' : 20, // disperions for x axis in nm/mm.  sets scale of x axis
  }
@@ -178,7 +178,9 @@ function poissonSample( lambda = 1){
                 // so...
                 var a0 = this.peakList[k]['a']; // scale value by height of peak
                 var mu = (this.peakList[k]['mu'] - app.centerWavelength)/dispersion + sensorWidthmm/2; // mu in mm
-                var sig = Math.sqrt( this.peakList[k]['sigma']**2 + (spectrometerConfigObj['psf']/(2.355*1000))**2);
+                var intensifierPSF = 0;
+                if (camConfigObj.intensified){intensifierPSF = camConfigObj.intensifierRes}
+                var sig = Math.sqrt( this.peakList[k]['sigma']**2 + (spectrometerConfigObj['psf']/(2.355*1000))**2 + (intensifierPSF/1000)**2  );
                 var x0 = ( (i+0) * pixelSize / 1000) - mu;
                 var x1 = ( (i+1) * pixelSize / 1000) - mu;
                 dataArray[i] += a0 * ( erf(x1/sig) - erf(x0/sig) );
@@ -255,6 +257,9 @@ function poissonSample( lambda = 1){
             newPath.attr('d', this.line(measuredData))
             newPath.attr('clip-path','url(#clipPath)')
             newPath.style('stroke', this.graphColor)
+            newPath.style('fill', this.graphColor)
+            newPath.style('fill-opacity', 0.01)
+            newPath.classed('graphPath', true)
          }
      }
 
@@ -477,6 +482,31 @@ var cwlInput = d3.select('#cwlGui')
                     })
 
 // add gui elements for min and max wavelength display
+
+function addGuiInput(targetSelection, targetEnvVarName, limits = null){
+    var newInput = targetSelection
+                    .append('input')
+                    .attr('value', app[targetEnvVarName])
+                    .classed('textGuiInput', true)
+                    .on('input', function(){
+                        if (app.debug){console.log(this.value)}
+                        if( !isNaN(Number(this.value))){
+                            app[targetEnvVarName] = Number(this.value);
+                            allDetectors.update();
+                        }
+
+                    })
+
+}
+
+// add x axis input elements
+addGuiInput(d3.select('#graphXLimsGui'), 'graphMinXnm')
+addGuiInput(d3.select('#graphXLimsGui'), 'graphMaxXnm')
+
+addGuiInput(d3.select('#graphYLimsGui'), 'graphYMin')
+addGuiInput(d3.select('#graphYLimsGui'), 'graphYMax')
+
+/*
 var minXinput = d3.select('#graphLimsGui')
                     .append('input')
                     .attr('value', app.graphMinXnm)
@@ -503,6 +533,8 @@ var maxXinput = d3.select('#graphLimsGui')
 
                     })
 
+                    */
+
 // add axes
 
 var xScale = d3.scaleLinear().domain([ app.graphMinXnm , app.graphMaxXnm]).range([0 + app.graphMarginX, app.svgWidth - app.graphMarginX]);
@@ -522,4 +554,10 @@ yAxis(yAxisG);
 function updateAxes(){
     xScale.domain([app.graphMinXnm, app.graphMaxXnm])
     xAxisG.call(xAxis);
+
+    yScale.domain([app.graphYMin, app.graphYMax])
+    yAxisG.call(yAxis);
+
+    d3.selectAll(".x.axis")
+        .style("stroke","black");
 }

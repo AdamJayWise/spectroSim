@@ -11,15 +11,10 @@
             }
 
             svg {
-                border : 1px solid black;
                 margin : 10px;
             }
 
-            path {
-                stroke : black;
-                fill : none;
-                stroke-opacity: 0.05;
-                stroke-width : 2;
+            .graphPath {
             }
 
             #detectorFactory {
@@ -61,6 +56,7 @@
                 margin-left : 8px;
             }
 
+
         </style>
     </head>
 
@@ -72,7 +68,8 @@
 
 
         <div id = "cwlGui">Center Wavelength, nm</div>
-        <div id = "graphLimsGui">Min & Max X-Axis, nm</div>
+        <div id = "graphXLimsGui">Min & Max X-Axis, nm</div>
+        <div id = "graphYLimsGui">Min & Max Y-Axis, counts</div>
         <div id = "svgContainer"></div>
         <div id = "labelContainer"></div>
 
