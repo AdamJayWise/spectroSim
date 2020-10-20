@@ -31,6 +31,10 @@
  * ok right now the program is calculating the spectra in terms of detector position in mm
  * how can I recast to use wavelength?  Or do I even want to? (I do)
  * 
+ * So I'd like to add a way for the user to add peaks... 
+ * a text box that lets you add comma separate cwls would be fine
+ * alternatively, give them an option to add triplets of (amp, cwl, width) on different lines
+ * 
  */
 
  console.log('spectroSim.js - Adam Wise 10/2020')
@@ -78,9 +82,19 @@
      'scaleTraces' : 0, // correct intensity of traces by factor of 1/pixelsize to account for splitting counts
      'centerWavelength' : 500,
      'svg' : d3.select('svg'),
-     'graphMarginX' : 40,
-     'graphMarginY' : 20,
+     'graphMarginX' : 60,
+     'graphMarginY' : 50,
      'targetDispersion' : 20, // disperions for x axis in nm/mm.  sets scale of x axis
+
+     // options for calculation
+     'includeSpectrometerThroughput' : 0,
+     'includeSensorQE' : 0,
+     'includeMirrorEff' : 0,
+     'includeGratingQE' : 0,
+
+     // options for display
+     'offSetTraces' : 0,
+     'indexCounter' : 0,
  }
 
  // ========================================= General Purpose Functions ===================================
@@ -206,6 +220,8 @@ function poissonSample( lambda = 1){
         this.line = d3.line().x(function(d,i){return i/10}).y(function(d){return d})
         this.spectrumGenerator = spectrumGenerator;
         this.opticalInfoObj = {}
+        this.graphIndex = app.indexCounter;
+        app.indexCounter += 1;
      }
 
      updateParams(){
@@ -217,6 +233,21 @@ function poissonSample( lambda = 1){
 
      draw(){
 
+
+        // check tilt, if it's ok remove any tilt error styling and continue, otherwise style as error and do not draw
+        if (this.tiltAngle >= -35){
+            if (this.legendEntry){
+                this.legendEntry.classed('tiltError', false)
+            }
+        }
+
+        if (this.tiltAngle < -35){
+            if (this.legendEntry){
+                this.legendEntry.classed('tiltError', true)
+            }
+            return
+            
+        }
 
         if (this.active==0){
             return
@@ -231,8 +262,19 @@ function poissonSample( lambda = 1){
          
          var yScaleFactor = 1;
          if (app['scaleTraces']) {yScaleFactor = 25/this.camConfigObj.xPixelSize}; 
+
+         var yOffset = 0;
          
-         var scaleY = d3.scaleLinear().domain( [app['graphYMin'] / yScaleFactor, app['graphYMax'] / yScaleFactor ]).range([app['svgHeight'] - app.graphMarginY, 0 + app.graphMarginY]);
+         if (app['offSetTraces']){
+             yOffset = this.graphIndex * 3 ;
+
+         }
+         
+         if (app.debug){console.log('offset is', yOffset)}
+
+         var scaleY = d3.scaleLinear()
+            .domain( [app['graphYMin'] / yScaleFactor, app['graphYMax'] / yScaleFactor ])
+            .range([app['svgHeight'] - app.graphMarginY - yOffset, 0 + app.graphMarginY - yOffset]);
          
          // scaleX is nm->pixels, the function inside is in mm-nm
          // for pixel -> nm, first go pixel->mm, pixel at 1/2 width should give center wavelength, yikes
@@ -455,6 +497,7 @@ createDetectorButton.on('click', function(){
 
 
     var newLabel = d3.select('#labelContainer').append('div')
+    newDetector.legendEntry = newLabel;
     
     newLabel
         .append('span')
@@ -516,6 +559,22 @@ addGuiInput(d3.select('#graphXLimsGui'), 'graphMaxXnm')
 addGuiInput(d3.select('#graphYLimsGui'), 'graphYMin')
 addGuiInput(d3.select('#graphYLimsGui'), 'graphYMax')
 
+// add checkbox options for graph
+var optionDiv = d3.select('#graphOptions')
+
+function addCheckBoxOption(targetSelection, param, labelText){
+    var newCheckBoxDiv = targetSelection.append('div')
+    var textLabel = newCheckBoxDiv.append('span').text(labelText)
+    var newCheckBox = newCheckBoxDiv.append('input').attr('type','checkbox')
+    newCheckBox.on('change', function(){
+        app[param] = this.checked;
+        allDetectors.update();
+    })
+    
+}
+
+addCheckBoxOption(optionDiv, 'offSetTraces', 'Offset Traces')
+
 /*
 var minXinput = d3.select('#graphLimsGui')
                     .append('input')
@@ -546,7 +605,6 @@ var maxXinput = d3.select('#graphLimsGui')
                     */
 
 // add axes
-
 var xScale = d3.scaleLinear().domain([ app.graphMinXnm , app.graphMaxXnm]).range([0 + app.graphMarginX, app.svgWidth - app.graphMarginX]);
 var yScale = d3.scaleLinear().domain([0,100]).range([app.svgHeight - app.graphMarginY, 0 + app.graphMarginY]);
 
@@ -562,6 +620,9 @@ xAxis(xAxisG);
 yAxis(yAxisG);
 
 function updateAxes(){
+
+    
+
     xScale.domain([app.graphMinXnm, app.graphMaxXnm])
     xAxisG.call(xAxis);
 
@@ -571,3 +632,32 @@ function updateAxes(){
     d3.selectAll(".x.axis")
         .style("stroke","black");
 }
+
+// add graph axis labels
+
+app.svg.append('text')
+    .text('Counts')
+    .attr('transform',`translate(${app.graphMarginX/3},${app.svgHeight/2}), rotate(-90)`)
+    .attr('text-anchor','middle')
+    .classed('axisText', true)
+
+app.svg.append('text')
+    .text('Wavelength, nm')
+    .attr('transform',`translate(${app.svgWidth/2},${app.svgHeight - app.graphMarginY/5}), rotate(0)`)
+    .attr('text-anchor','middle')
+    .classed('axisText', true)
+
+// add callback to custom spectrum input
+var spectrumTextInput = d3.select('#spectrumTextarea')
+spectrumTextInput.on('input', function(){
+    peakList1 = [];
+    var rows = this.value.split('\n');
+    rows.forEach(function(row){
+        var params = row.split(',');
+        var newPeak = {'a' : params[0], 'mu' : params[1], 'sigma' : params[2]};
+        peakList1.push(newPeak)
+    })
+    spectrumGen1.peakList = peakList1;
+    allDetectors.update();
+    txt = this.value;
+})

@@ -11,7 +11,7 @@
             }
 
             svg {
-                margin : 10px;
+                margin : 0px;
             }
 
             .graphPath {
@@ -56,6 +56,36 @@
                 margin-left : 8px;
             }
 
+            .guiContainer {
+                display : flex;
+                flex-direction : row;
+            }
+
+            .guiSubpanel{
+                display : flex;
+                flex-direction: column;
+                margin : 5px;
+            }
+
+            .guiSubpanelHead {
+                font-weight : bolder;
+                background-color: rgb(28,38,116);
+                color : white;
+                padding-left: 10px;
+            }
+
+            #spectrumTextarea{
+                width : 300px;
+                height : 150px;
+            }
+
+            .tiltError {
+                text-decoration: line-through;
+                color : red;    
+            }
+
+        
+
 
         </style>
     </head>
@@ -63,15 +93,50 @@
     <body>
        
 
+    <div class = "guiContainer">
+        <div id = "detectorFactory" class ="guiSubpanel">
+            <div class = "guiSubpanelHead">Add New Camera / Spectrometer </div>
+        </div>
 
-        <div id = "detectorFactory">Add New Camera / Spectrometer</div>
+        <div class = "guiSubpanel">
+            <div class = "guiSubpanelHead">Graph Controls</div>
+            <div id = "cwlGui">Center Wavelength, nm: </div>
+            <div id = "graphXLimsGui">Min & Max X-Axis, nm: </div>
+            <div id = "graphYLimsGui">Min & Max Y-Axis, counts: </div>
+        </div>
+
+        <div class = "guiSubpanel" id = "graphOptions">
+            <div class = "guiSubpanelHead">Options</div>
+        </div>
+
+    </div>
+
+    <div class = "guiContainer">
+        <div id = "svgContainer" class = "guiSubpanel">
+            <div class = "guiSubpanelHead">Simulated Spectra</div>
+        </div>
+    </div>
+
+    <div class = "guiContainer">
+        <div id = "svgContainer" class = "guiSubpanel">
+            <div class = "guiSubpanelHead">Legend (Click Entry to Dismiss)</div>
+            <div id = "labelContainer"></div>
+        </div>
+    </div>
+
+    <div class = "guiContainer">
+        <div id = "svgContainer" class = "guiSubpanel">
+            <div class = "guiSubpanelHead">Custom Spectrum Input</div>
+            <div>add comma-separated rows of peak height (photons), center wavelength (nm), FWHM (nm)</div>
+            <div id = "spectrumTextInput">
+                <textarea id = "spectrumTextarea"></textarea>
+            </div>
+        </div>
+    </div>
 
 
-        <div id = "cwlGui">Center Wavelength, nm</div>
-        <div id = "graphXLimsGui">Min & Max X-Axis, nm</div>
-        <div id = "graphYLimsGui">Min & Max Y-Axis, counts</div>
-        <div id = "svgContainer"></div>
-        <div id = "labelContainer"></div>
+
+
 
     </body>
 
