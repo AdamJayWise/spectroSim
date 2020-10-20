@@ -75,7 +75,7 @@
      'svgHeight' : 280,
      'graphYMin' : -20,
      'graphYMax' : 2000,
-     'scaleTraces' : 1, // correct intensity of traces by factor of 1/pixelsize to account for splitting counts
+     'scaleTraces' : 0, // correct intensity of traces by factor of 1/pixelsize to account for splitting counts
      'centerWavelength' : 500,
      'svg' : d3.select('svg'),
      'graphMarginX' : 40,
@@ -171,23 +171,26 @@ function poissonSample( lambda = 1){
          dataArray.fill(0);
          // add the contribution from each peak
          for (var k in this.peakList){
-             if (app.debug){console.log('adding ',k, this.peakList[k], camConfigObj)}
-             for (var i =0; i < dataArray.length; i++){
-                // calculate the integral for each pixel.  E.g. for pixel one, it'll be 0:pixelwidth, then for pixel 2 it'll be pixelwidth : 2*pixelwidth and so on
-                // the integral will be erf(a)-erf(b).  estabilish a cutoff at which you won't want to calc erf?
-                // so...
-                var a0 = this.peakList[k]['a']; // scale value by height of peak
-                var mu = (this.peakList[k]['mu'] - app.centerWavelength)/dispersion + sensorWidthmm/2; // mu in mm
-                var intensifierPSF = 0;
-                if (camConfigObj.intensified){intensifierPSF = camConfigObj.intensifierRes}
-                var sig = Math.sqrt( this.peakList[k]['sigma']**2 + (spectrometerConfigObj['psf']/(2.355*1000))**2 + (intensifierPSF/1000)**2  );
-                var x0 = ( (i+0) * pixelSize / 1000) - mu;
-                var x1 = ( (i+1) * pixelSize / 1000) - mu;
-                dataArray[i] += a0 * ( erf(x1/sig) - erf(x0/sig) );
+            if ( (this.peakList[k]['mu'] > app.graphMinXnm) & (this.peakList[k]['mu'] < app.graphMaxXnm) ){
+                //if (app.debug){console.log('adding ',k, this.peakList[k], camConfigObj)}
+                for (var i =0; i < dataArray.length; i++){
+                    // calculate the integral for each pixel.  E.g. for pixel one, it'll be 0:pixelwidth, then for pixel 2 it'll be pixelwidth : 2*pixelwidth and so on
+                    // the integral will be erf(a)-erf(b).  estabilish a cutoff at which you won't want to calc erf?
+                    // so...
+                    var a0 = this.peakList[k]['a']; // scale value by height of peak
+                    var mu = (this.peakList[k]['mu'] - app.centerWavelength)/dispersion + sensorWidthmm/2; // mu in mm
+                    var intensifierPSF = 0;
+                    if (camConfigObj.intensified){intensifierPSF = camConfigObj.intensifierRes}
+                    var sig = Math.sqrt( (this.peakList[k]['sigma'] / dispersion)**2 + (spectrometerConfigObj['psf']/(2.355*1000))**2 + (intensifierPSF/1000)**2  );
+                    // right now sigma is kinda mixed between nm and mm... I need to turn the sigma from the peak into mm
+                    var x0 = ( (i+0) * pixelSize / 1000) - mu;
+                    var x1 = ( (i+1) * pixelSize / 1000) - mu;
+                    dataArray[i] += a0/sig * ( erf(x1/sig) - erf(x0/sig) );
 
                 //dataArray[i] +=  this.peakList[k]['a'] * g(i * pixelSize / 1000, this.peakList[k]['mu'], this.peakList[k]['sigma'])
              }
          }
+        }
          return {'data':dataArray}
      }
  }
@@ -208,7 +211,6 @@ function poissonSample( lambda = 1){
      updateParams(){
         this.tiltAngle = calculateTilt({'grooveDensity' : this.gratingConfigObj.rule , 'deviationAngle' : this.spectrometerConfigObj.dev, 'centerWavelength' : app.centerWavelength})
         this.opticalInfoObj = calcWavelengthRange(app.centerWavelength, this.gratingConfigObj.rule, this.spectrometerConfigObj.dev, this.spectrometerConfigObj.fl, this.tiltAngle, this.spectrometerConfigObj.fpt, this.camConfigObj.xPixels, this.camConfigObj.xPixelSize )
-        console.log('000', this.opticalInfoObj)
         this.spectrum = this.spectrumGenerator.createSpectrumDataObject(this.camConfigObj, this.spectrometerConfigObj, this.gratingConfigObj, this.opticalInfoObj);
 
     }
@@ -290,7 +292,9 @@ class DetectorGroup {
  // ======================= Grating Equation Code ======================================
 
  function calcWavelengthRange(cwl, rule, dev, fl, tilt, fpt, xPixels, xPixelSize){
-     console.log(cwl, rule, dev, fl, tilt, fpt, xPixels, xPixelSize)
+     if (app.debug){
+        console.log(cwl, rule, dev, fl, tilt, fpt, xPixels, xPixelSize)
+     }
     // first calculate the sensor size in mm, from pixel size in microns
     var sensorSize = xPixels * xPixelSize / 1000;
     // calculate the angle of the incident and diffracted rays relative to the grating normal
@@ -334,12 +338,18 @@ class DetectorGroup {
 
  peakList1 = [
 
-                {'a' :1820, 'mu':515, 'sigma':0.00001},
-                {'a' :1820, 'mu':552, 'sigma':0.00001},
-                {'a' :1820, 'mu':550, 'sigma':0.00001},
-                {'a' :1820, 'mu':500.5, 'sigma':0.00001},
-                {'a' :1820, 'mu':490, 'sigma':0.00001},
+                {'a' :20, 'mu':515, 'sigma':0.00001},
+                {'a' :4000, 'mu':600, 'sigma':10},
+                {'a' :20, 'mu':550, 'sigma':0.00001},
+                {'a' :20, 'mu':500.5, 'sigma':0.00001},
+                {'a' :20, 'mu':490, 'sigma':0.00001},
             ]
+
+/*
+for (var i = 0; i<100; i++){
+    peakList1.push({'a':20, 'mu':300 + i*10, 'sigma' : 0.00001})
+}
+*/
 
  spectrumGen1 = new SpectrumGenerator(peakList = peakList1)
 
@@ -423,7 +433,7 @@ createDetectorButton.on('click', function(){
     var newDetector = new Detector(newCamObj, newSpecObj, newGratingObj, spectrumGen1);
     newDetector.updateParams();
     
-    console.log('tilt angle is', newDetector.tiltAngle)
+    if (app.debug){console.log('tilt angle is', newDetector.tiltAngle)}
     if (newDetector.tiltAngle < -32 | isNaN(newDetector.tiltAngle)){
         console.log('grating tilt too large')
         alert('Grating tilt too large - try a grating with less lines per mm, or a longer focal length spectrometer')
