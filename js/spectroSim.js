@@ -181,11 +181,11 @@ function poissonSample( lambda = 1){
                     var mu = (this.peakList[k]['mu'] - app.centerWavelength)/dispersion + sensorWidthmm/2; // mu in mm
                     var intensifierPSF = 0;
                     if (camConfigObj.intensified){intensifierPSF = camConfigObj.intensifierRes}
-                    var sig = Math.sqrt( (this.peakList[k]['sigma'] / dispersion)**2 + (spectrometerConfigObj['psf']/(2.355*1000))**2 + (intensifierPSF/1000)**2  );
+                    var sig = Math.sqrt( (this.peakList[k]['sigma'] / (2.355 * dispersion))**2 + (spectrometerConfigObj['psf']/(2.355*1000))**2 + (intensifierPSF/2.355*1000)**2  );
                     // right now sigma is kinda mixed between nm and mm... I need to turn the sigma from the peak into mm
                     var x0 = ( (i+0) * pixelSize / 1000) - mu;
                     var x1 = ( (i+1) * pixelSize / 1000) - mu;
-                    dataArray[i] += a0/sig * ( erf(x1/sig) - erf(x0/sig) );
+                    dataArray[i] += a0 * ( erf(x1/sig) - erf(x0/sig) );
 
                 //dataArray[i] +=  this.peakList[k]['a'] * g(i * pixelSize / 1000, this.peakList[k]['mu'], this.peakList[k]['sigma'])
              }
@@ -338,11 +338,11 @@ class DetectorGroup {
 
  peakList1 = [
 
-                {'a' :20, 'mu':515, 'sigma':0.00001},
-                {'a' :4000, 'mu':600, 'sigma':10},
-                {'a' :20, 'mu':550, 'sigma':0.00001},
-                {'a' :20, 'mu':500.5, 'sigma':0.00001},
-                {'a' :20, 'mu':490, 'sigma':0.00001},
+                {'a' :2000, 'mu':515, 'sigma':0.01},
+                {'a' :2000, 'mu':600, 'sigma':4},
+                {'a' :1800, 'mu':550, 'sigma':0.00001},
+                {'a' :1800, 'mu':500.5, 'sigma':0.00001},
+                {'a' :1800, 'mu':490, 'sigma':0.00001},
             ]
 
 /*
@@ -443,7 +443,7 @@ createDetectorButton.on('click', function(){
     if (app.debug){ console.log(newSpecObj)}
     
     
-    newDetector.graphColor = `hsl(${Math.round(Math.random()*360)},100%,50%)`
+    newDetector.graphColor = `hsl(${ 10 * Math.round(Math.random()*36) },100%,${2*Math.round(Math.random()*10) + 40 }%)`
     newDetector.active = 1;// this is a hack for display, fix eventually
     
     allDetectors.add(newDetector);
