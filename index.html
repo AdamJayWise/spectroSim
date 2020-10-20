@@ -59,12 +59,14 @@
             .guiContainer {
                 display : flex;
                 flex-direction : row;
+                min-width : 800px;
             }
 
             .guiSubpanel{
                 display : flex;
                 flex-direction: column;
                 margin : 5px;
+                flex-grow: 1;
             }
 
             .guiSubpanelHead {
@@ -76,7 +78,7 @@
 
             #spectrumTextarea{
                 width : 300px;
-                height : 150px;
+                height : 75px;
             }
 
             .tiltError {
@@ -127,7 +129,7 @@
     <div class = "guiContainer">
         <div id = "svgContainer" class = "guiSubpanel">
             <div class = "guiSubpanelHead">Custom Spectrum Input</div>
-            <div>add comma-separated rows of peak height (photons), center wavelength (nm), FWHM (nm)</div>
+            <div>add comma-separated rows of peak area (photons), center wavelength (nm), FWHM (nm)</div>
             <div id = "spectrumTextInput">
                 <textarea id = "spectrumTextarea"></textarea>
             </div>

@@ -689,7 +689,7 @@ spectrumTextInput.on('input', function(){
     var rows = this.value.split('\n');
     rows.forEach(function(row){
         var params = row.split(',');
-        var newPeak = {'a' : params[0], 'mu' : params[1], 'sigma' : params[2]};
+        var newPeak = {'a' : params[0]/2, 'mu' : params[1], 'sigma' : params[2]};
         peakList1.push(newPeak)
     })
     spectrumGen1.peakList = peakList1;
