@@ -39,6 +39,19 @@
 
  console.log('spectroSim.js - Adam Wise 10/2020')
 
+ // color map
+
+ var colors = [
+     'blue',
+     'green',
+     'red',
+     'gray',
+     'orange',
+     'black',
+     'cyan',
+     'darkPink'
+ ]
+
  // ========================================= filter camera definitions =======================
 
  var c = {};
@@ -379,8 +392,10 @@ class DetectorGroup {
  var data1 = 0;
 
  peakList1 = [
-
-                {'a' :2000, 'mu':515, 'sigma':0.01},
+                {'a' :5000, 'mu':450, 'sigma':20},
+                {'a' :500, 'mu':515, 'sigma':0.01},
+                {'a' :500, 'mu':515.1, 'sigma':0.01},
+                {'a' :500, 'mu':516, 'sigma':0.01},
                 {'a' :2000, 'mu':600, 'sigma':4},
                 {'a' :1800, 'mu':550, 'sigma':0.00001},
                 {'a' :1800, 'mu':500.5, 'sigma':0.00001},
@@ -485,7 +500,8 @@ createDetectorButton.on('click', function(){
     if (app.debug){ console.log(newSpecObj)}
     
     
-    newDetector.graphColor = `hsl(${ 10 * Math.round(Math.random()*36) },100%,${2*Math.round(Math.random()*10) + 40 }%)`
+    newDetector.graphColor = colors[newDetector.graphIndex % colors.length];
+    //newDetector.graphColor = `hsl(${ 10 * Math.round(Math.random()*36) },100%,${2*Math.round(Math.random()*10) + 40 }%)`
     newDetector.active = 1;// this is a hack for display, fix eventually
     
     allDetectors.add(newDetector);
