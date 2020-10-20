@@ -225,6 +225,7 @@ function poissonSample( lambda = 1){
  class Detector {
      constructor(camConfigObj, spectrometerConfigObj, gratingConfigObj, spectrumGenerator){
         this.camConfigObj = camConfigObj;
+        this.sensorObj = models[this.camConfigObj.sensorType]; // sensor object for QE calculation
         this.spectrometerConfigObj = spectrometerConfigObj;
         this.gratingConfigObj = gratingConfigObj;
         this.paths = [];
@@ -292,21 +293,38 @@ function poissonSample( lambda = 1){
          // scaleX is nm->pixels, the function inside is in mm-nm
          // for pixel -> nm, first go pixel->mm, pixel at 1/2 width should give center wavelength, yikes
          var sensorHalfWidthPx = this.camConfigObj.xPixels/2
-         this.line.x( (d,i)=>scaleX( app.centerWavelength + (0.5 + i - sensorHalfWidthPx)*this.camConfigObj.xPixelSize/1000 * dispersion));
          
+         // break up x scaling into two steps, detector pixel -> nm, then nm -> svg position
+         var pix2nm = i => app.centerWavelength + (0.5 + i - sensorHalfWidthPx)*this.camConfigObj.xPixelSize/1000 * dispersion;
+         var xScaleFunc = (d,i)=>scaleX(pix2nm(i));
+         
+         
+         this.line.x(xScaleFunc);
          this.line.y(d=>scaleY(d))
-        
+         var sensorObj = this.sensorObj;
+
+         
 
          // draw random samples based on ground truth
          for (var q = 0; q < app['nSamples']; q++){
 
-            measuredData = this.spectrum.data;
+            var measuredData = this.spectrum.data;
 
-            if (!this.camConfigObj['ideal']){
-                measuredData = this.spectrum.data.map(poissonSample)
+            // apply sensor QE
+            if (app.includeSensorQE){
+                console.log('considering sensor qe')
+                measuredData = measuredData.map(function(v,i){
+                //console.log(v * sensorObj.getQE(pix2nm(i)))
+                return v * sensorObj.getQE(pix2nm(i))
+            })
             }
 
-            var measuredData = measuredData.map(d=>d + (this.camConfigObj.readNoise * randBM()) )
+            // if camera is not ideal, use poisson sampling to simulate shot noise
+            if (!this.camConfigObj['ideal']){
+                measuredData = measuredData.map(poissonSample)
+            }
+
+            measuredData = measuredData.map(d=>d + (this.camConfigObj.readNoise * randBM()) )
             //var measuredData = this.spectrum.data;
             var newPath = this.svg.append('path')
             this.paths.push(newPath);
@@ -590,6 +608,7 @@ function addCheckBoxOption(targetSelection, param, labelText){
 }
 
 addCheckBoxOption(optionDiv, 'offSetTraces', 'Offset Traces')
+addCheckBoxOption(optionDiv, 'includeSensorQE', 'Include Sensor QE')
 
 /*
 var minXinput = d3.select('#graphLimsGui')
