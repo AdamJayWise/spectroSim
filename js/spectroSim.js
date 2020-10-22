@@ -95,7 +95,7 @@
      'scaleTraces' : 0, // correct intensity of traces by factor of 1/pixelsize to account for splitting counts
      'centerWavelength' : 500,
      'svg' : d3.select('svg'),
-     'graphMarginX' : 60,
+     'graphMarginX' : 70,
      'graphMarginY' : 50,
      'targetDispersion' : 20, // disperions for x axis in nm/mm.  sets scale of x axis
 
@@ -108,7 +108,15 @@
      // options for display
      'offSetTraces' : 0,
      'indexCounter' : 0,
+     'autoScaleY' : 1,
+
+     //info for autoscale
+     'yMaxGlobal' : 0,
+     
  }
+
+// make the svg full width if possible
+app.svgWidth = window.innerWidth * 0.95;
 
  // ========================================= General Purpose Functions ===================================
 
@@ -190,7 +198,11 @@ function poissonSample( lambda = 1){
 
      createSpectrumDataObject(camConfigObj, spectrometerConfigObj, gratingConfigObj, opticalInfoObj = {}) {
          if (app.debug){console.log('createSpectrumDataObject called')};
+         
          var dataArray = [];
+         
+         var yMaxLocal = 0;
+
          dataArray.length = camConfigObj['xPixels'];
          var pixelSize = camConfigObj['xPixelSize'];
          var dispersion = opticalInfoObj.linearDispersion;
@@ -218,7 +230,7 @@ function poissonSample( lambda = 1){
              }
          }
         }
-         return {'data':dataArray}
+         return {'data':dataArray, 'yMaxLocal' : yMaxLocal, 'yMaxGlobal' : dataArray.reduce((a,b)=>Math.max(a,b))}
      }
  }
 
@@ -281,7 +293,6 @@ function poissonSample( lambda = 1){
          
          if (app['offSetTraces']){
              yOffset = this.graphIndex * 3 ;
-
          }
          
          if (app.debug){console.log('offset is', yOffset)}
@@ -353,9 +364,23 @@ class DetectorGroup {
     }
 
     update(){
-        updateAxes();
+
+        // first, update the data for each spectrum
         this.detectors.forEach(function(d){
             d.updateParams();
+        })
+
+        if (app.autoScaleY){
+            app.graphYMax = 10;
+            this.detectors.forEach(function(d){
+                if( d.active & (d.spectrum.yMaxGlobal > app.graphYMax)){
+                    app.graphYMax = d.spectrum.yMaxGlobal;
+                }
+            })
+        }
+
+        updateAxes();
+        this.detectors.forEach(function(d){
             d.erase();
             d.draw();
         })
@@ -600,6 +625,11 @@ function addCheckBoxOption(targetSelection, param, labelText){
     var newCheckBoxDiv = targetSelection.append('div')
     var textLabel = newCheckBoxDiv.append('span').text(labelText)
     var newCheckBox = newCheckBoxDiv.append('input').attr('type','checkbox')
+
+    if (app[param]){
+        newCheckBox.property('checked', true)
+    }
+
     newCheckBox.on('change', function(){
         app[param] = this.checked;
         allDetectors.update();
@@ -609,6 +639,7 @@ function addCheckBoxOption(targetSelection, param, labelText){
 
 addCheckBoxOption(optionDiv, 'offSetTraces', 'Offset Traces')
 addCheckBoxOption(optionDiv, 'includeSensorQE', 'Include Sensor QE')
+addCheckBoxOption(optionDiv, 'autoScaleY', 'Auto-Scale Y Axis')
 
 /*
 var minXinput = d3.select('#graphLimsGui')
@@ -655,8 +686,6 @@ xAxis(xAxisG);
 yAxis(yAxisG);
 
 function updateAxes(){
-
-    
 
     xScale.domain([app.graphMinXnm, app.graphMaxXnm])
     xAxisG.call(xAxis);
