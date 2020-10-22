@@ -128,16 +128,21 @@
 
     <div class = "guiContainer">
         <div id = "svgContainer" class = "guiSubpanel">
+            <div class = "guiSubpanelHead">Predefined Spectra</div>
+            <div id = "preDefinedSpectraSelect">
+               
+            </div>
+        </div>
+
+        <div id = "svgContainer" class = "guiSubpanel">
             <div class = "guiSubpanelHead">Custom Spectrum Input</div>
             <div>add comma-separated rows of peak area (photons), center wavelength (nm), FWHM (nm)</div>
             <div id = "spectrumTextInput">
                 <textarea id = "spectrumTextarea"></textarea>
             </div>
         </div>
+
     </div>
-
-
-
 
 
     </body>
@@ -146,6 +151,7 @@
     <script src = 'js/spectrometers.js'></script>
     <script src = 'js/models.js'></script>
     <script src = 'js/cameraDefsJSON.js'></script>
+    <script src = 'js/spectra.js'></script>
     <script src = 'js/spectroSim.js'></script>
 
 

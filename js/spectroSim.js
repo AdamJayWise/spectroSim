@@ -696,3 +696,23 @@ spectrumTextInput.on('input', function(){
     allDetectors.update();
     txt = this.value;
 })
+
+// add select for pre-defined spectra select
+
+var customSpectrumSelect = d3.select('#preDefinedSpectraSelect').append('select')
+
+customSpectrumSelect
+    .selectAll('option')
+    .data(Object.keys(definedSpectra))
+    .enter()
+    .append('option')
+    .attr('value',d=>d)
+    .text(d=>d)
+
+customSpectrumSelect.on('change', function(){
+    if (app.debug){console.log(this.value)}
+    var specText = definedSpectra[this.value];
+    spectrumTextInput._groups[0][0].value = specText;
+    spectrumTextInput.dispatch('input')
+
+})
