@@ -93,15 +93,20 @@
      'graphYMin' : -20,
      'graphYMax' : 2000,
      'scaleTraces' : 0, // correct intensity of traces by factor of 1/pixelsize to account for splitting counts
-     'centerWavelength' : 500,
+
      'svg' : d3.select('svg'),
      'graphMarginX' : 70,
      'graphMarginY' : 50,
      'targetDispersion' : 20, // disperions for x axis in nm/mm.  sets scale of x axis
 
+     //spectrometer controls
+     'centerWavelength' : 500,
+     'slitWidth' : 10, // slit width in microns
+
      // options for calculation
      'includeSpectrometerThroughput' : 0,
      'includeSensorQE' : 0,
+     'includeNoise' : 0,
      'includeMirrorEff' : 0,
      'includeGratingQE' : 0,
 
@@ -112,6 +117,9 @@
 
      //info for autoscale
      'yMaxGlobal' : 0,
+
+     // misc options
+     'flatSpectralInput' : 0,
      
  }
 
@@ -208,6 +216,13 @@ function poissonSample( lambda = 1){
          var dispersion = opticalInfoObj.linearDispersion;
          var sensorWidthmm = camConfigObj.xPixelSize * camConfigObj.xPixels / 1000;
          dataArray.fill(0);
+
+        // if the flat option is selection, just return a filled array
+        if (app.flatSpectralInput){
+            dataArray.fill(100);
+            return {'data':dataArray, 'yMaxLocal' : yMaxLocal, 'yMaxGlobal' : 110}
+        }
+
          // add the contribution from each peak
          for (var k in this.peakList){
             if ( (this.peakList[k]['mu'] > app.graphMinXnm) & (this.peakList[k]['mu'] < app.graphMaxXnm) ){
@@ -326,16 +341,17 @@ function poissonSample( lambda = 1){
                 console.log('considering sensor qe')
                 measuredData = measuredData.map(function(v,i){
                 //console.log(v * sensorObj.getQE(pix2nm(i)))
-                return v * sensorObj.getQE(pix2nm(i))
-            })
+                return (v * sensorObj.getQE(pix2nm(i))) | 0
+                })
             }
 
             // if camera is not ideal, use poisson sampling to simulate shot noise
-            if (!this.camConfigObj['ideal']){
+            if (app['includeNoise']){
                 measuredData = measuredData.map(poissonSample)
+                measuredData = measuredData.map(d=>d + (this.camConfigObj.readNoise * randBM()) )
             }
 
-            measuredData = measuredData.map(d=>d + (this.camConfigObj.readNoise * randBM()) )
+            
             //var measuredData = this.spectrum.data;
             var newPath = this.svg.append('path')
             this.paths.push(newPath);
@@ -624,6 +640,7 @@ var optionDiv = d3.select('#graphOptions')
 function addCheckBoxOption(targetSelection, param, labelText){
     var newCheckBoxDiv = targetSelection.append('div')
     var textLabel = newCheckBoxDiv.append('span').text(labelText)
+    textLabel.classed('textLabel', true)
     var newCheckBox = newCheckBoxDiv.append('input').attr('type','checkbox')
 
     if (app[param]){
@@ -639,7 +656,9 @@ function addCheckBoxOption(targetSelection, param, labelText){
 
 addCheckBoxOption(optionDiv, 'offSetTraces', 'Offset Traces')
 addCheckBoxOption(optionDiv, 'includeSensorQE', 'Include Sensor QE')
+addCheckBoxOption(optionDiv, 'includeNoise', 'Include Sensor Noise')
 addCheckBoxOption(optionDiv, 'autoScaleY', 'Auto-Scale Y Axis')
+addCheckBoxOption(optionDiv, 'flatSpectralInput', 'Flat Spectral Input')
 
 /*
 var minXinput = d3.select('#graphLimsGui')
