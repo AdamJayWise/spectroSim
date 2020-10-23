@@ -322,7 +322,8 @@ function poissonSample( lambda = 1){
          var xShift = 0;//-1 * this.camera.xPixelSize/1000
          var dispersion = this.opticalInfoObj.linearDispersion;
          var scaleX = d3.scaleLinear().domain([app.graphMinXnm, app.graphMaxXnm]).range([0 + app.graphMarginX , app.svgWidth - app.graphMarginX])
-         
+         app.graphScaleX = scaleX;
+
          var yScaleFactor = 1;
          if (app['scaleTraces']) {yScaleFactor = 25/this.camConfigObj.xPixelSize}; 
 
@@ -411,6 +412,7 @@ class DetectorGroup {
 
         if (app.autoScaleY){
             app.graphYMax = 10;
+            app.graphYMin = -20;
             this.detectors.forEach(function(d){
                 if( d.active & (d.spectrum.yMaxGlobal > app.graphYMax)){
                     app.graphYMax = d.spectrum.yMaxGlobal;
@@ -734,6 +736,7 @@ function updateAxes(){
 
     yScale.domain([app.graphYMin, app.graphYMax])
     yAxisG.call(yAxis);
+    app.graphScaleY = yScale;
 
     d3.selectAll(".x.axis")
         .style("stroke","black");
@@ -787,3 +790,71 @@ customSpectrumSelect.on('change', function(){
     spectrumTextInput.dispatch('input')
 
 })
+
+
+// add drag callback to SVG 
+
+function svgDragStart(){
+
+    app.mouseDragStartX = d3.mouse(this)[0];
+    app.mouseDragStartY = d3.mouse(this)[1];
+
+    if(app.debug){
+    console.log('drag started')
+    console.log('drag started at ', app.mouseDragStartX, app.mouseDragStartY)
+    }
+}
+
+function svgDragging(){
+    if(app.debug){
+    console.log('draggin!')
+    }
+}
+
+function svgDragEnd(){
+
+    app.mouseDragEndX = d3.mouse(this)[0];
+    app.mouseDragEndY = d3.mouse(this)[1];  
+
+    if(app.debug){
+        console.log('drag ended at ', app.mouseDragEndX, app.mouseDragEndY)
+        }
+    
+
+    if (!app.autoScaleY){
+        console.log('hello')
+        // if box is formed top to bottom, zoom in on y axis
+        if (app.mouseDragEndY > app.mouseDragStartY){
+            app.graphYMin = [app.mouseDragStartY,app.mouseDragEndY].map(i=>app.graphScaleY.invert(i)).reduce((a,b)=>(Math.min(a,b)))
+            app.graphYMax = [app.mouseDragStartY,app.mouseDragEndY].map(i=>app.graphScaleY.invert(i)).reduce((a,b)=>(Math.max(a,b)))
+        }
+
+        // if box is formed top to bottom, zoom out on y axis
+        if (app.mouseDragEndY < app.mouseDragStartY){
+            app.graphYMin = app.graphYMin - Math.abs(app.graphYMax)*0.2;
+            app.graphYMax = app.graphYMax * 1.2;
+            }
+    }
+    // if box is formed left to right, zoom in on x axis
+    if (app.mouseDragEndX > app.mouseDragStartX){
+        app.graphMinXnm = [app.mouseDragStartX,app.mouseDragEndX].map(i=>app.graphScaleX.invert(i)).reduce((a,b)=>(Math.min(a,b)))
+        app.graphMaxXnm = [app.mouseDragStartX,app.mouseDragEndX].map(i=>app.graphScaleX.invert(i)).reduce((a,b)=>(Math.max(a,b)))
+    }
+
+    // if box is formed right to left, zoom out
+    if (app.mouseDragEndX < app.mouseDragStartX){
+        app.graphMinXnm = app.graphMinXnm / 1.2;
+        app.graphMaxXnm = app.graphMaxXnm * 1.2;
+        }
+
+
+    if(app.debug){
+        console.log(app.mouse)
+        console.log('min and max rescale y', app.graphYMin, app.graphYMax)
+    }
+    
+    allDetectors.update()
+
+}
+
+app.svg.call(d3.drag().on('start', svgDragStart).on('drag', svgDragging).on('end', svgDragEnd))
