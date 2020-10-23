@@ -220,7 +220,7 @@ function poissonSample( lambda = 1){
         // if the flat option is selection, just return a filled array
         if (app.flatSpectralInput){
             dataArray.fill(100);
-            return {'data':dataArray, 'yMaxLocal' : yMaxLocal, 'yMaxGlobal' : 110}
+            return {'data':dataArray, 'yMaxLocal' : yMaxLocal, 'yMaxGlobal' : 100}
         }
 
          // add the contribution from each peak
@@ -245,7 +245,26 @@ function poissonSample( lambda = 1){
              }
          }
         }
-         return {'data':dataArray, 'yMaxLocal' : yMaxLocal, 'yMaxGlobal' : dataArray.reduce((a,b)=>Math.max(a,b))}
+
+        // so I have pix2nm... how do I do nm->pix...
+        function nm2pix(l){
+            var a = (l - app.centerWavelength)/(camConfigObj.xPixelSize/1000 * opticalInfoObj.linearDispersion);
+            return a - 0.5 + camConfigObj.xPixels/2;
+        }
+
+        app.nm2pix = nm2pix;
+
+        // bounds over which to check max y value for autoscaling purposes
+        var iMin = Math.max( 0, Math.round(nm2pix(app.graphMinXnm)));
+        var iMax = Math.min( camConfigObj.xPixels - 1, Math.round(nm2pix(app.graphMaxXnm)));
+
+        if(app.debug){
+            console.log('iMin, iMax are: ',iMin,iMax)
+        }
+
+   
+
+         return {'data':dataArray, 'yMaxLocal' : yMaxLocal, 'yMaxGlobal' : dataArray.slice(iMin,iMax).reduce((a,b)=>Math.max(a,b))}
      }
  }
 
@@ -269,7 +288,8 @@ function poissonSample( lambda = 1){
         this.tiltAngle = calculateTilt({'grooveDensity' : this.gratingConfigObj.rule , 'deviationAngle' : this.spectrometerConfigObj.dev, 'centerWavelength' : app.centerWavelength})
         this.opticalInfoObj = calcWavelengthRange(app.centerWavelength, this.gratingConfigObj.rule, this.spectrometerConfigObj.dev, this.spectrometerConfigObj.fl, this.tiltAngle, this.spectrometerConfigObj.fpt, this.camConfigObj.xPixels, this.camConfigObj.xPixelSize )
         this.spectrum = this.spectrumGenerator.createSpectrumDataObject(this.camConfigObj, this.spectrometerConfigObj, this.gratingConfigObj, this.opticalInfoObj);
-
+        
+        this.pix2nm = i => app.centerWavelength + (0.5 + i - this.camConfigObj.xPixels/2)*this.camConfigObj.xPixelSize/1000 * this.opticalInfoObj.linearDispersion;
     }
 
      draw(){
@@ -321,13 +341,14 @@ function poissonSample( lambda = 1){
          var sensorHalfWidthPx = this.camConfigObj.xPixels/2
          
          // break up x scaling into two steps, detector pixel -> nm, then nm -> svg position
-         var pix2nm = i => app.centerWavelength + (0.5 + i - sensorHalfWidthPx)*this.camConfigObj.xPixelSize/1000 * dispersion;
-         var xScaleFunc = (d,i)=>scaleX(pix2nm(i));
+         
+         var xScaleFunc = (d,i)=>scaleX(this.pix2nm(i));
          
          
          this.line.x(xScaleFunc);
          this.line.y(d=>scaleY(d))
          var sensorObj = this.sensorObj;
+         var pix2nm = this.pix2nm;
 
          
 
@@ -654,10 +675,10 @@ function addCheckBoxOption(targetSelection, param, labelText){
     
 }
 
-addCheckBoxOption(optionDiv, 'offSetTraces', 'Offset Traces')
+addCheckBoxOption(d3.select('#graphControls'), 'offSetTraces', 'Offset Traces')
 addCheckBoxOption(optionDiv, 'includeSensorQE', 'Include Sensor QE')
 addCheckBoxOption(optionDiv, 'includeNoise', 'Include Sensor Noise')
-addCheckBoxOption(optionDiv, 'autoScaleY', 'Auto-Scale Y Axis')
+addCheckBoxOption(d3.select('#graphControls'), 'autoScaleY', 'Auto-Scale Y Axis')
 addCheckBoxOption(optionDiv, 'flatSpectralInput', 'Flat Spectral Input')
 
 /*

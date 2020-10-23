@@ -66,16 +66,19 @@
                 flex-grow: 1;
             }
 
+            .guiSubpanel div {
+                padding-left : 6px;
+                margin : 1px;
+            }
+
             .guiSubpanelHead {
                 font-weight : bolder;
                 background-color: rgb(28,38,116);
                 color : white;
-                padding-left: 2px;
+                
             }
 
-            .guiSubpanel div {
-                padding-left : 6px;
-            }
+
 
             #spectrumTextarea{
                 width : 300px;
@@ -105,7 +108,7 @@
             <div id = "cwlGui">Center Wavelength, nm: </div>
         </div>
 
-        <div class = "guiSubpanel">
+        <div class = "guiSubpanel" id = "graphControls">
             <div class = "guiSubpanelHead">Graph Controls</div>
             <div id = "graphXLimsGui">X Axis, nm: </div>
             <div id = "graphYLimsGui">Y Axis, counts: </div>
