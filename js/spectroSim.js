@@ -803,16 +803,31 @@ function svgDragStart(){
     console.log('drag started')
     console.log('drag started at ', app.mouseDragStartX, app.mouseDragStartY)
     }
+
+    app.selectRect = app.svg.append('rect').attr('x', app.mouseDragStartX).attr('y', app.mouseDragStartY)
+    app.selectRect.attr("fill", 'none')
+    app.selectRect.attr('stroke','black')
+    app.selectRect.attr('stroke-weight', 4)
 }
+
 
 function svgDragging(){
     if(app.debug){
     console.log('draggin!')
     }
+
+    app.mouseDragX = d3.mouse(this)[0];
+    app.mouseDragY = d3.mouse(this)[1];  
+
+    app.selectRect.attr('x', Math.min(app.mouseDragX,app.mouseDragStartX))
+    app.selectRect.attr('y', Math.min(app.mouseDragY,app.mouseDragStartY))
+    app.selectRect.attr('width', Math.abs(app.mouseDragX - app.mouseDragStartX))
+    app.selectRect.attr('height', Math.abs(app.mouseDragY - app.mouseDragStartY))
 }
 
 function svgDragEnd(){
 
+    app.selectRect.remove();
     app.mouseDragEndX = d3.mouse(this)[0];
     app.mouseDragEndY = d3.mouse(this)[1];  
 
