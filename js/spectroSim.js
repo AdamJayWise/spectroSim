@@ -262,9 +262,11 @@ function poissonSample( lambda = 1){
             console.log('iMin, iMax are: ',iMin,iMax)
         }
 
-   
+        var gmax = 0;
+        try { gmax = dataArray.slice(iMin,iMax).reduce((a,b)=>Math.max(a,b))}
+        catch { gmax = 0 }
 
-         return {'data':dataArray, 'yMaxLocal' : yMaxLocal, 'yMaxGlobal' : dataArray.slice(iMin,iMax).reduce((a,b)=>Math.max(a,b))}
+         return {'data':dataArray, 'yMaxLocal' : yMaxLocal, 'yMaxGlobal' : gmax}
      }
  }
 
