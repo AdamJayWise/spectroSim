@@ -101,7 +101,7 @@
 
      //spectrometer controls
      'centerWavelength' : 500,
-     'slitWidth' : 10, // slit width in microns
+     'slitWidth' : 0.01, // slit width in mm
 
      // options for calculation
      'includeSpectrometerThroughput' : 0,
@@ -161,6 +161,10 @@ function calcPixFactor(pixwidth){
 
      return s*(1 - 1/(1 + 0.278383*x + 0.230389*x**2 + 0.000972 * x**3 + 0.078108*x**4)**4);
  }
+
+  function erfInt(x){
+    return (x * erf(x)) + Math.exp( (-(x**2))) / Math.sqrt(Math.PI)
+  }
 
  // Standard Normal variate using Box-Muller transform.
 function randBM() {
@@ -234,12 +238,24 @@ function poissonSample( lambda = 1){
                     var a0 = this.peakList[k]['a']; // scale value by height of peak
                     var mu = (this.peakList[k]['mu'] - app.centerWavelength)/dispersion + sensorWidthmm/2; // mu in mm
                     var intensifierPSF = 0;
-                    if (camConfigObj.intensified){intensifierPSF = camConfigObj.intensifierRes}
-                    var sig = Math.sqrt( (this.peakList[k]['sigma'] / (2.355 * dispersion))**2 + (spectrometerConfigObj['psf']/(2.355*1000))**2 + (intensifierPSF/2.355*1000)**2  );
+                    if (camConfigObj.intensified){
+                        intensifierPSF = camConfigObj.intensifierRes;
+                    }
+                    var sig = Math.sqrt( (this.peakList[k]['sigma'] / (2.355 * dispersion))**2 + (spectrometerConfigObj['psf']/(2.355*1000))**2 + (intensifierPSF/(2.355*1000))**2  );
                     // right now sigma is kinda mixed between nm and mm... I need to turn the sigma from the peak into mm
                     var x0 = ( (i+0) * pixelSize / 1000) - mu;
                     var x1 = ( (i+1) * pixelSize / 1000) - mu;
-                    dataArray[i] += a0 * ( erf(x1/sig) - erf(x0/sig) );
+                    
+                    // with slit! x1 is left point
+                    // integral w/ slit conv is I(x) = erfInt(x + app.slitWidth/2) - erfInt(x - app.slitWidth/2)
+    
+                    
+                    var I0 = erfInt( (x0 + app.slitWidth/2) / sig) - erfInt( (x0 - app.slitWidth/2) / sig)
+                    var I1 =  erfInt( (x1 + app.slitWidth/2) / sig) - erfInt( (x1 - app.slitWidth/2) / sig)
+                    dataArray[i] += a0 * (I1 - I0);
+                    
+                    //this is how I'm doing it without slit, 11/2/2020
+                    // dataArray[i] += a0 * ( erf(x1/sig) - erf(x0/sig) );
 
                 //dataArray[i] +=  this.peakList[k]['a'] * g(i * pixelSize / 1000, this.peakList[k]['mu'], this.peakList[k]['sigma'])
              }
@@ -630,6 +646,25 @@ var cwlInput = d3.select('#cwlGui')
                         if( !isNaN(Number(this.value))){
                             app.centerWavelength = Number(this.value);
                             allDetectors.update();
+                        }
+
+                    })
+
+// add gui elements for center wavelength display
+var slitInput = d3.select('#slitGui')
+                    .append('input')
+                    .classed('textGuiInput', true)
+                    .attr('value', app.slitWidth * 1000)
+                    .on('change', function(){
+                        if (app.debug){console.log(this.value)}
+                        if( !isNaN(Number(this.value))){
+                            var possibleVal = Number(this.value);
+                            var possibleVal = Math.max(1, possibleVal);
+                            var possibleVal = Math.min(possibleVal, 2500);
+                            app.slitWidth = possibleVal / 1000;
+                            allDetectors.update();
+                            this.value = possibleVal;
+                            
                         }
 
                     })
