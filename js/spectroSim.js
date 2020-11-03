@@ -223,7 +223,7 @@ function poissonSample( lambda = 1){
 
         // if the flat option is selection, just return a filled array
         if (app.flatSpectralInput){
-            dataArray.fill(100);
+            dataArray.fill(100.0);
             return {'data':dataArray, 'yMaxLocal' : yMaxLocal, 'yMaxGlobal' : 100}
         }
 
@@ -254,8 +254,9 @@ function poissonSample( lambda = 1){
                     var I1 =  erfInt( (x1 + app.slitWidth/2) / sig) - erfInt( (x1 - app.slitWidth/2) / sig)
                     dataArray[i] += a0 * (I1 - I0);
                     
+
                     //this is how I'm doing it without slit, 11/2/2020
-                    // dataArray[i] += a0 * ( erf(x1/sig) - erf(x0/sig) );
+                    //dataArray[i] += a0 * ( erf(x1/sig) - erf(x0/sig) );
 
                 //dataArray[i] +=  this.peakList[k]['a'] * g(i * pixelSize / 1000, this.peakList[k]['mu'], this.peakList[k]['sigma'])
              }
@@ -333,8 +334,9 @@ function poissonSample( lambda = 1){
         }
 
          if (app.debug == 1){
-            console.log('drawing')
+            console.log('drawing...')
          }
+
          var xShift = 0;//-1 * this.camera.xPixelSize/1000
          var dispersion = this.opticalInfoObj.linearDispersion;
          var scaleX = d3.scaleLinear().domain([app.graphMinXnm, app.graphMaxXnm]).range([0 + app.graphMarginX , app.svgWidth - app.graphMarginX])
@@ -375,21 +377,27 @@ function poissonSample( lambda = 1){
          for (var q = 0; q < app['nSamples']; q++){
 
             var measuredData = this.spectrum.data;
+           
 
             // apply sensor QE
             if (app.includeSensorQE){
                 console.log('considering sensor qe')
                 measuredData = measuredData.map(function(v,i){
                 //console.log(v * sensorObj.getQE(pix2nm(i)))
-                return (v * sensorObj.getQE(pix2nm(i))) | 0
+                return (100.0 * sensorObj.getQE(pix2nm(i))) || 0
                 })
             }
+
+ 
+
+            // ok, so each pixel is getting assigned a nm value?
 
             // if camera is not ideal, use poisson sampling to simulate shot noise
             if (app['includeNoise']){
                 measuredData = measuredData.map(poissonSample)
                 measuredData = measuredData.map(d=>d + (this.camConfigObj.readNoise * randBM()) )
             }
+
 
             
             //var measuredData = this.spectrum.data;
@@ -591,7 +599,7 @@ createDetectorButton.on('click', function(){
     newDetector.updateParams();
     
     if (app.debug){console.log('tilt angle is', newDetector.tiltAngle)}
-    if (newDetector.tiltAngle < -32 | isNaN(newDetector.tiltAngle)){
+    if (newDetector.tiltAngle < -32 || isNaN(newDetector.tiltAngle)){
         console.log('grating tilt too large')
         alert('Grating tilt too large - try a grating with less lines per mm, or a longer focal length spectrometer')
         return 
