@@ -241,7 +241,11 @@ function poissonSample( lambda = 1){
                     if (camConfigObj.intensified){
                         intensifierPSF = camConfigObj.intensifierRes;
                     }
+
+                    
                     var sig = Math.sqrt( (this.peakList[k]['sigma'] / (2.355 * dispersion))**2 + (spectrometerConfigObj['psf']/(2.355*1000))**2 + (intensifierPSF/(2.355*1000))**2  );
+                    
+                    
                     // right now sigma is kinda mixed between nm and mm... I need to turn the sigma from the peak into mm
                     var x0 = ( (i+0) * pixelSize / 1000) - mu;
                     var x1 = ( (i+1) * pixelSize / 1000) - mu;
@@ -384,7 +388,7 @@ function poissonSample( lambda = 1){
                 console.log('considering sensor qe')
                 measuredData = measuredData.map(function(v,i){
                 //console.log(v * sensorObj.getQE(pix2nm(i)))
-                return (100.0 * sensorObj.getQE(pix2nm(i))) || 0
+                return (v * sensorObj.getQE(pix2nm(i))) || 0
                 })
             }
 
