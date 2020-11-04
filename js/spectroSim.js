@@ -543,7 +543,7 @@ var allDetectors = new DetectorGroup();
 // detector factory goes here
 var detectorFactoryDiv = d3.select('#detectorFactory')
 
-var cameraSelect = detectorFactoryDiv.append('select')
+var cameraSelect = detectorFactoryDiv.append('select').classed('equipmentSelect', true)
 cameraSelect
     .selectAll('option')
     .data(Object.keys(cameraDefs).sort(function(a,b){
@@ -558,7 +558,7 @@ cameraSelect
     .attr('value',d=>d)
     .text(d=>cameraDefs[d]['displayName'])
 
-var spectrometerSelect = detectorFactoryDiv.append('select')
+var spectrometerSelect = detectorFactoryDiv.append('select').classed('equipmentSelect', true)
 spectrometerSelect
     .selectAll('option')
     .data(Object.keys(spectrometers).sort())
@@ -567,7 +567,7 @@ spectrometerSelect
     .attr('value',d=>d)
     .text(d=>spectrometers[d]['displayName'])
 
-var gratingSelect = detectorFactoryDiv.append('select')
+var gratingSelect = detectorFactoryDiv.append('select').classed('equipmentSelect', true)
 gratingSelect
     .selectAll('option')
     .data(Object.keys(gratings))
