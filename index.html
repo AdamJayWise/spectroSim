@@ -19,12 +19,17 @@
                 flex-direction : column;
             }
 
+            .bigHeader {
+                font-size : 140%;
+                margin : 6px;
+            }
+
             select {
-                width : 280px;
+                width : 90%;
             }
 
             button {
-                width : 280px;
+                width : 90%;
             }
 
             #svgContainer {
@@ -64,10 +69,15 @@
                 flex-direction: column;
                 margin : 5px;
                 flex-grow: 1;
+                box-shadow: 3px 3px 4px 2px #888888;
             }
 
             .guiSubpanel div {
-                padding-left : 6px;
+                margin : 2px;
+                padding-left : 2px;
+            }
+
+            .guiSubpanel select {
                 margin : 1px;
             }
 
@@ -75,13 +85,14 @@
                 font-weight : bolder;
                 background-color: rgb(28,38,116);
                 color : white;
+                text-align : center;
                 
             }
 
 
 
             #spectrumTextarea{
-                width : 300px;
+                width : 90%;
                 height : 75px;
             }
 
@@ -98,6 +109,10 @@
     <body>
        
 
+    <div class = "bigHeader">
+        <div class = "guiSubpanelHead">Spectral Simulator v0.2</div>
+    </div>
+
     <div class = "guiContainer">
         <div id = "detectorFactory" class ="guiSubpanel">
             <div class = "guiSubpanelHead">Add New Camera / Spectrometer </div>
@@ -105,18 +120,62 @@
 
         <div class = "guiSubpanel">
             <div class = "guiSubpanelHead">Spectrometer Settings</div>
-            <div id = "cwlGui">Center Wavelength, nm: </div>
-            <div id = "slitGui">Slit Width, um: </div>
+            <table>
+                <tr>
+                    <td>Center Wavelength, nm: </td>
+                    <td id = "cwlGui"></td>    
+                </tr>
+                <tr>
+                    <td>Slit Width, um:</td>
+                    <td id = "slitGui"></td>    
+                </tr>
+                
+            </table>
         </div>
 
         <div class = "guiSubpanel" id = "graphControls">
             <div class = "guiSubpanelHead">Graph Controls</div>
-            <div id = "graphXLimsGui">X Axis, nm: </div>
-            <div id = "graphYLimsGui">Y Axis, counts: </div>
+            <div >
+                <table>
+                    <tr>
+                        <td>X Axis, nm:</td>
+                        <td id = "graphXLimsGui"></td>
+                    </tr>
+                    <tr>
+                        <td>Y Axis, counts:</td>
+                        <td id = "graphYLimsGui"></td>
+                    </tr>
+                    <tr>
+                        <td>Offset Traces</td>
+                        <td id = "offSetTraces"></td>
+                    </tr>
+                    <tr>
+                        <td>Autoscale Y</td>
+                        <td id = "autoScale"></td>
+                    </tr>
+                </table>
+                 
+            </div>
+            <div > </div>
         </div>
 
         <div class = "guiSubpanel" id = "graphOptions">
             <div class = "guiSubpanelHead">Options</div>
+            <table>
+                <tr>
+                    <td>Include Sensor QE</td>
+                    <td id = "sensorQE"></td>    
+                </tr>
+                <tr>
+                    <td>Include Read Noise</td>
+                    <td id = "sensorNoise"></td>    
+                </tr>
+                <tr>
+                    <td>Flat Spectrum In</td>
+                    <td id = "flatInput"></td>    
+                </tr>
+                
+            </table>
         </div>
 
     </div>
@@ -144,9 +203,20 @@
 
         <div id = "svgContainer" class = "guiSubpanel">
             <div class = "guiSubpanelHead">Custom Spectrum Input</div>
-            <div>add comma-separated rows of peak area (photons), center wavelength (nm), FWHM (nm)</div>
+            <div>Input spectra as comma-separated rows of peak area (photons), center wavelength (nm), FWHM (nm)</div>
             <div id = "spectrumTextInput">
                 <textarea id = "spectrumTextarea"></textarea>
+            </div>
+        </div>
+
+        <div id = "svgContainer" class = "guiSubpanel">
+            <div class = "guiSubpanelHead">What's New?</div>
+            <div>
+                <ul>
+                    <li>Added slit width simulation</li>
+                    <li>Added click-and-drag zooming</li>
+                    <li>Added Y axis autoscaling</li>
+                </ul>
             </div>
         </div>
 
@@ -156,6 +226,7 @@
     </body>
 
     <script src = 'js/d3.min.js'></script>
+    <script src = 'js/math.min.js'></script>
     <script src = 'js/spectrometers.js'></script>
     <script src = 'js/models.js'></script>
     <script src = 'js/cameraDefsJSON.js'></script>

@@ -154,6 +154,7 @@ function calcPixFactor(pixwidth){
  }
 
  // erf approximation
+ 
  function erf(x){
 
     var s = Math.sign(x);
@@ -165,6 +166,9 @@ function calcPixFactor(pixwidth){
   function erfInt(x){
     return (x * erf(x)) + Math.exp( (-(x**2))) / Math.sqrt(Math.PI)
   }
+
+
+//var erf = math.erf;
 
  // Standard Normal variate using Box-Muller transform.
 function randBM() {
@@ -253,7 +257,6 @@ function poissonSample( lambda = 1){
                     // with slit! x1 is left point
                     // integral w/ slit conv is I(x) = erfInt(x + app.slitWidth/2) - erfInt(x - app.slitWidth/2)
     
-                    
                     var I0 = erfInt( (x0 + app.slitWidth/2) / sig) - erfInt( (x0 - app.slitWidth/2) / sig)
                     var I1 =  erfInt( (x1 + app.slitWidth/2) / sig) - erfInt( (x1 - app.slitWidth/2) / sig)
                     dataArray[i] += a0 * (I1 - I0);
@@ -375,14 +378,11 @@ function poissonSample( lambda = 1){
          var sensorObj = this.sensorObj;
          var pix2nm = this.pix2nm;
 
-         
-
          // draw random samples based on ground truth
          for (var q = 0; q < app['nSamples']; q++){
 
             var measuredData = this.spectrum.data;
            
-
             // apply sensor QE
             if (app.includeSensorQE){
                 console.log('considering sensor qe')
@@ -390,20 +390,15 @@ function poissonSample( lambda = 1){
                 //console.log(v * sensorObj.getQE(pix2nm(i)))
                 return (v * sensorObj.getQE(pix2nm(i))) || 0
                 })
-            }
-
- 
+            }  
 
             // ok, so each pixel is getting assigned a nm value?
-
             // if camera is not ideal, use poisson sampling to simulate shot noise
             if (app['includeNoise']){
                 measuredData = measuredData.map(poissonSample)
                 measuredData = measuredData.map(d=>d + (this.camConfigObj.readNoise * randBM()) )
             }
 
-
-            
             //var measuredData = this.spectrum.data;
             var newPath = this.svg.append('path')
             this.paths.push(newPath);
@@ -514,12 +509,6 @@ class DetectorGroup {
                 {'a' :1800, 'mu':490, 'sigma':0.00001},
             ]
 
-/*
-for (var i = 0; i<100; i++){
-    peakList1.push({'a':20, 'mu':300 + i*10, 'sigma' : 0.00001})
-}
-*/
-
  spectrumGen1 = new SpectrumGenerator(peakList = peakList1)
 
 // =======================================================================================
@@ -588,7 +577,7 @@ gratingSelect
     .text(d=>d)
 
 var createDetectorButton = detectorFactoryDiv.append('button')
-createDetectorButton.text('Create New Detector')
+createDetectorButton.text('Add to Simulation')
 
 // callback for creating a new detector
 createDetectorButton.on('click', function(){
@@ -710,10 +699,10 @@ addGuiInput(d3.select('#graphYLimsGui'), 'graphYMax')
 var optionDiv = d3.select('#graphOptions')
 
 function addCheckBoxOption(targetSelection, param, labelText){
-    var newCheckBoxDiv = targetSelection.append('div')
-    var textLabel = newCheckBoxDiv.append('span').text(labelText)
-    textLabel.classed('textLabel', true)
-    var newCheckBox = newCheckBoxDiv.append('input').attr('type','checkbox')
+    //var newCheckBoxDiv = targetSelection.append('div')
+    //var textLabel = newCheckBoxDiv.append('span').text(labelText)
+    //textLabel.classed('textLabel', true)
+    var newCheckBox = targetSelection.append('input').attr('type','checkbox')
 
     if (app[param]){
         newCheckBox.property('checked', true)
@@ -726,11 +715,11 @@ function addCheckBoxOption(targetSelection, param, labelText){
     
 }
 
-addCheckBoxOption(d3.select('#graphControls'), 'offSetTraces', 'Offset Traces')
-addCheckBoxOption(optionDiv, 'includeSensorQE', 'Include Sensor QE')
-addCheckBoxOption(optionDiv, 'includeNoise', 'Include Sensor Noise')
-addCheckBoxOption(d3.select('#graphControls'), 'autoScaleY', 'Auto-Scale Y Axis')
-addCheckBoxOption(optionDiv, 'flatSpectralInput', 'Flat Spectral Input')
+addCheckBoxOption(d3.select('#offSetTraces'), 'offSetTraces', 'Offset Traces')
+addCheckBoxOption(d3.select('#sensorQE'), 'includeSensorQE', 'Include Sensor QE')
+addCheckBoxOption(d3.select('#sensorNoise'), 'includeNoise', 'Include Sensor Noise')
+addCheckBoxOption(d3.select('#autoScale'), 'autoScaleY', 'Auto-Scale Y Axis')
+addCheckBoxOption(d3.select('#flatInput'), 'flatSpectralInput', 'Flat Spectral Input')
 
 /*
 var minXinput = d3.select('#graphLimsGui')
