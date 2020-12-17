@@ -103,6 +103,10 @@
      'centerWavelength' : 500,
      'slitWidth' : 0.01, // slit width in mm
 
+     // camera-related settings
+     'numAccumulations' : 1,
+     'exposureTimeSec' : 1,
+
      // options for calculation
      'includeSpectrometerThroughput' : 0,
      'includeSensorQE' : 0,
@@ -259,15 +263,17 @@ function poissonSample( lambda = 1){
     
                     var I0 = erfInt( (x0 + app.slitWidth/2) / sig) - erfInt( (x0 - app.slitWidth/2) / sig)
                     var I1 =  erfInt( (x1 + app.slitWidth/2) / sig) - erfInt( (x1 - app.slitWidth/2) / sig)
-                    dataArray[i] += a0 * (I1 - I0);
+                    dataArray[i] += (a0 * (I1 - I0)) * app.exposureTimeSec * app.numAccumulations;
+                    // enforce 16 bit max value
+                    dataArray[i] = Math.min(dataArray[i], 2**16); 
                     
 
                     //this is how I'm doing it without slit, 11/2/2020
                     //dataArray[i] += a0 * ( erf(x1/sig) - erf(x0/sig) );
 
                 //dataArray[i] +=  this.peakList[k]['a'] * g(i * pixelSize / 1000, this.peakList[k]['mu'], this.peakList[k]['sigma'])
-             }
-         }
+                 }
+            }
         }
 
         // so I have pix2nm... how do I do nm->pix...
@@ -290,7 +296,7 @@ function poissonSample( lambda = 1){
         try { gmax = dataArray.slice(iMin,iMax).reduce((a,b)=>Math.max(a,b))}
         catch { gmax = 0 }
 
-         return {'data':dataArray, 'yMaxLocal' : yMaxLocal, 'yMaxGlobal' : gmax}
+         return {'data':dataArray, 'yMaxLocal' : yMaxLocal, 'yMaxGlobal' : gmax + 10}
      }
  }
 
@@ -396,7 +402,7 @@ function poissonSample( lambda = 1){
             // if camera is not ideal, use poisson sampling to simulate shot noise
             if (app['includeNoise']){
                 measuredData = measuredData.map(poissonSample)
-                measuredData = measuredData.map(d=>d + (this.camConfigObj.readNoise * randBM()) )
+                measuredData = measuredData.map(d=>d + (Math.sqrt(app.numAccumulations) * this.camConfigObj.readNoise * randBM()) )
             }
 
             //var measuredData = this.spectrum.data;
@@ -406,8 +412,8 @@ function poissonSample( lambda = 1){
             newPath.attr('d', this.line(measuredData))
             newPath.attr('clip-path','url(#clipPath)')
             newPath.style('stroke', this.graphColor)
-            newPath.style('fill', this.graphColor)
-            newPath.style('fill-opacity', 0.01)
+            newPath.style('fill', 'none')
+            //snewPath.style('fill-opacity', 0.01)
             newPath.classed('graphPath', true)
          }
      }
@@ -689,11 +695,15 @@ function addGuiInput(targetSelection, targetEnvVarName, limits = null){
 }
 
 // add x axis input elements
-addGuiInput(d3.select('#graphXLimsGui'), 'graphMinXnm')
-addGuiInput(d3.select('#graphXLimsGui'), 'graphMaxXnm')
-
-addGuiInput(d3.select('#graphYLimsGui'), 'graphYMin')
-addGuiInput(d3.select('#graphYLimsGui'), 'graphYMax')
+addGuiInput(d3.select('#graphXLimsGui'), 'graphMinXnm');
+addGuiInput(d3.select('#graphXLimsGui'), 'graphMaxXnm');
+// y axis gui elements
+addGuiInput(d3.select('#graphYLimsGui'), 'graphYMin');
+addGuiInput(d3.select('#graphYLimsGui'), 'graphYMax');
+//number of accumulations gui
+addGuiInput(d3.select('#accGui'), 'numAccumulations');
+//
+addGuiInput(d3.select('#expGui'), 'exposureTimeSec');
 
 // add checkbox options for graph
 var optionDiv = d3.select('#graphOptions')
@@ -720,6 +730,17 @@ addCheckBoxOption(d3.select('#sensorQE'), 'includeSensorQE', 'Include Sensor QE'
 addCheckBoxOption(d3.select('#sensorNoise'), 'includeNoise', 'Include Sensor Noise')
 addCheckBoxOption(d3.select('#autoScale'), 'autoScaleY', 'Auto-Scale Y Axis')
 addCheckBoxOption(d3.select('#flatInput'), 'flatSpectralInput', 'Flat Spectral Input')
+
+d3.select("#vizNoiseCheck").append('input').attr('type','checkbox').on('change', function(){
+    
+    if(this.checked == true){
+        app.nSamples = 30;
+    }
+    else {
+        app.nSamples = 1;
+    }
+    allDetectors.update();
+})
 
 /*
 var minXinput = d3.select('#graphLimsGui')
@@ -883,7 +904,7 @@ function svgDragEnd(){
         // if box is formed top to bottom, zoom out on y axis
         if (app.mouseDragEndY < app.mouseDragStartY){
             app.graphYMin = app.graphYMin - Math.abs(app.graphYMax)*0.2;
-            app.graphYMax = app.graphYMax * 1.2;
+            app.graphYMax = app.graphYMax * 1.2 ;
             }
     }
     // if box is formed left to right, zoom in on x axis

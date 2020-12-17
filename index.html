@@ -77,6 +77,7 @@
                 margin : 5px;
                 flex-grow: 1;
                 box-shadow: 3px 3px 4px 2px #888888;
+                font-size: 90%;
             }
 
             .guiSubpanel div {
@@ -121,7 +122,7 @@
         </div>
 
         <div class = "guiSubpanel">
-            <div class = "guiSubpanelHead">Spectrometer Settings</div>
+            <div class = "guiSubpanelHead">Acquisition Settings</div>
             <table>
                 <tr>
                     <td>Center Wavelength, nm: </td>
@@ -130,6 +131,16 @@
                 <tr>
                     <td>Slit Width, um:</td>
                     <td id = "slitGui"></td>    
+                </tr>
+
+                <tr>
+                    <td>Exposure Time, s</td>
+                    <td id = "expGui"></td>    
+                </tr>
+
+                <tr>
+                    <td># of Accumulations</td>
+                    <td id = "accGui"></td>    
                 </tr>
                 
             </table>
@@ -155,6 +166,10 @@
                         <td>Autoscale Y</td>
                         <td id = "autoScale"></td>
                     </tr>
+                    <!--<tr>
+                        <td>Move Y-Axis with Center Wavelength</td>
+                        <td id = "autoScale"></td>
+                    </tr> -->
                 </table>
                  
             </div>
@@ -171,6 +186,10 @@
                 <tr>
                     <td>Include Read Noise</td>
                     <td id = "sensorNoise"></td>    
+                </tr>
+                <tr>
+                    <td>Visualize Noise</td>
+                    <td id = "vizNoiseCheck"></td>    
                 </tr>
                 <tr>
                     <td>Flat Spectral Input</td>
@@ -205,7 +224,7 @@
 
         <div id = "svgContainer" class = "guiSubpanel">
             <div class = "guiSubpanelHead">Custom Spectrum Input</div>
-            <div>Input spectra as comma-separated rows of peak area (photons), center wavelength (nm), FWHM (nm)</div>
+            <div>Input spectra as comma-separated rows of peak area (photons/sec), center wavelength (nm), FWHM (nm)</div>
             <div id = "spectrumTextInput">
                 <textarea id = "spectrumTextarea"></textarea>
             </div>
