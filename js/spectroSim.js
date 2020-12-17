@@ -110,7 +110,7 @@
      // options for calculation
      'includeSpectrometerThroughput' : 0,
      'includeSensorQE' : 0,
-     'includeNoise' : 0,
+     'includeNoise' : 1,
      'includeMirrorEff' : 0,
      'includeGratingQE' : 0,
 
@@ -118,6 +118,7 @@
      'offSetTraces' : 0,
      'indexCounter' : 0,
      'autoScaleY' : 1,
+     'moveAxisWithCenterWavelength' : 1,
 
      //info for autoscale
      'yMaxGlobal' : 0,
@@ -296,7 +297,7 @@ function poissonSample( lambda = 1){
         try { gmax = dataArray.slice(iMin,iMax).reduce((a,b)=>Math.max(a,b))}
         catch { gmax = 0 }
 
-         return {'data':dataArray, 'yMaxLocal' : yMaxLocal, 'yMaxGlobal' : gmax + 10}
+         return {'data':dataArray, 'yMaxLocal' : yMaxLocal, 'yMaxGlobal' : gmax + 10 + Math.sqrt(gmax)}
      }
  }
 
@@ -408,7 +409,7 @@ function poissonSample( lambda = 1){
             //var measuredData = this.spectrum.data;
             var newPath = this.svg.append('path')
             this.paths.push(newPath);
-            newPath.style('stroke-opacity', 2 * 1/app['nSamples'])
+            newPath.style('stroke-opacity', 3 * 1/app['nSamples'])
             newPath.attr('d', this.line(measuredData))
             newPath.attr('clip-path','url(#clipPath)')
             newPath.style('stroke', this.graphColor)
@@ -652,6 +653,24 @@ var cwlInput = d3.select('#cwlGui')
                         if (app.debug){console.log(this.value)}
                         if( !isNaN(Number(this.value))){
                             app.centerWavelength = Number(this.value);
+
+                            // if we should, update the x axis range
+                            if (app.moveAxisWithCenterWavelength){
+                                var range = app.graphMaxXnm - app.graphMinXnm;
+                                if (app.debug){
+                                    console.log('range is : ', range, ' nm');
+                                }
+                                app.graphMaxXnm = app.centerWavelength + range/2;
+                                app.graphMinXnm = app.centerWavelength - range/2;
+
+                                graphMaxXGui.each(function(){
+                                    this.value = app.graphMaxXnm;
+                                })
+                                graphMinXGui.each(function(){
+                                    this.value = app.graphMinXnm;
+                                })
+                            }
+
                             allDetectors.update();
                         }
 
@@ -692,11 +711,13 @@ function addGuiInput(targetSelection, targetEnvVarName, limits = null){
 
                     })
 
+    return newInput
+
 }
 
 // add x axis input elements
-addGuiInput(d3.select('#graphXLimsGui'), 'graphMinXnm');
-addGuiInput(d3.select('#graphXLimsGui'), 'graphMaxXnm');
+var graphMinXGui = addGuiInput(d3.select('#graphXLimsGui'), 'graphMinXnm');
+var graphMaxXGui = addGuiInput(d3.select('#graphXLimsGui'), 'graphMaxXnm');
 // y axis gui elements
 addGuiInput(d3.select('#graphYLimsGui'), 'graphYMin');
 addGuiInput(d3.select('#graphYLimsGui'), 'graphYMax');
@@ -725,11 +746,14 @@ function addCheckBoxOption(targetSelection, param, labelText){
     
 }
 
-addCheckBoxOption(d3.select('#offSetTraces'), 'offSetTraces', 'Offset Traces')
-addCheckBoxOption(d3.select('#sensorQE'), 'includeSensorQE', 'Include Sensor QE')
-addCheckBoxOption(d3.select('#sensorNoise'), 'includeNoise', 'Include Sensor Noise')
-addCheckBoxOption(d3.select('#autoScale'), 'autoScaleY', 'Auto-Scale Y Axis')
-addCheckBoxOption(d3.select('#flatInput'), 'flatSpectralInput', 'Flat Spectral Input')
+addCheckBoxOption(d3.select('#offSetTraces'), 'offSetTraces', 'Offset Traces');
+addCheckBoxOption(d3.select('#sensorQE'), 'includeSensorQE', 'Include Sensor QE');
+addCheckBoxOption(d3.select('#sensorNoise'), 'includeNoise', 'Include Sensor Noise');
+addCheckBoxOption(d3.select('#autoScale'), 'autoScaleY', 'Auto-Scale Y Axis');
+addCheckBoxOption(d3.select('#flatInput'), 'flatSpectralInput', 'Flat Spectral Input');
+addCheckBoxOption(d3.select('#moveAxisWithCenterWavelength'), 'moveAxisWithCenterWavelength', 'Flat Spectral Input');
+
+
 
 d3.select("#vizNoiseCheck").append('input').attr('type','checkbox').on('change', function(){
     
