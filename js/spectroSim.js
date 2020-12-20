@@ -523,7 +523,15 @@ class DetectorGroup {
 /// now I need to create an SVG canvas and draw the spectrum to it
 
 
-var mainSvg = d3.select('#svgContainer').append('svg').style('height', app.svgHeight).style('width',app.svgWidth)
+var mainSvg = d3.select('#svgContainer')
+    .append('svg')
+    .style('height', app.svgHeight)
+    .style('width',app.svgWidth)
+
+// make the svg container div have at least the height of the svg
+d3.select("#svgContainer")
+            .style('min-height', app.svgHeight + 2*+d3.select("#svgContainer").style("padding-top"))
+
 app.svg = mainSvg;
 
 // create a clippath to establish drawing area of svg
